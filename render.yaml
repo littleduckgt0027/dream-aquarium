@@ -1,0 +1,26 @@
+# Prepared deployment blueprint. This is NOT a free persistent-disk service.
+# Creating this service can incur a charge; owner must explicitly approve in Render.
+services:
+  - type: web
+    name: dream-aquarium-api
+    runtime: docker
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /api/health
+    disk:
+      name: aquarium-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /app/data/aquarium.sqlite
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: FRONTEND_ORIGIN
+        value: https://littleduckgt0027.github.io
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: TRUST_PROXY_HOPS
+        value: "1"

@@ -5,3 +5,8 @@ data/
 playwright-report/
 test-results/
 *.log
+
+launcher.local.json
+artifacts/
+
+dist-pages/

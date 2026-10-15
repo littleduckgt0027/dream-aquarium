@@ -17,11 +17,18 @@ const wait = (end, at = Date.now()) => {
   const s = Math.max(0, Math.ceil((end - at) / 1000));
   return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
+const API_BASE = (import.meta.env.VITE_API_URL || " ")
+  .trim()
+  .replace(/\/$/, "");
+const TOKEN_KEY = "dreamSession:" + API_BASE;
 async function api(path, body, key) {
-  const r = await fetch("/api/" + path, {
-    credentials: "same-origin",
+  const r = await fetch(API_BASE + "/api/" + path, {
+    credentials: API_BASE ? "omit" : "same-origin",
     headers: {
       "Content-Type": "application/json",
+      ...(API_BASE && sessionStorage.getItem(TOKEN_KEY)
+        ? { Authorization: "Bearer " + sessionStorage.getItem(TOKEN_KEY) }
+        : {}),
       ...(key ? { "Idempotency-Key": key } : {}),
     },
     ...(body ? { method: "POST", body: JSON.stringify(body) } : {}),
@@ -32,6 +39,9 @@ async function api(path, body, key) {
   } catch {
     throw Error("Cannot reach server");
   }
+  if (data.sessionToken) sessionStorage.setItem(TOKEN_KEY, data.sessionToken);
+  if (r.status === 401) sessionStorage.removeItem(TOKEN_KEY);
+  if (path === "logout" && r.ok) sessionStorage.removeItem(TOKEN_KEY);
   if (!r.ok) {
     const e = Error(data.error);
     e.status = r.status;
@@ -1672,4 +1682,8 @@ function Empty({ text }) {
 createRoot(document.getElementById("root")).render(<App />);
 
 if (import.meta.env.PROD && "serviceWorker" in navigator)
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+  navigator.serviceWorker
+    .register(import.meta.env.BASE_URL + "sw.js", {
+      scope: import.meta.env.BASE_URL,
+    })
+    .catch(() => {});

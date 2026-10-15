@@ -6,11 +6,11 @@
 
 1. ติดตั้ง **Node.js 24 LTS**
 2. ดาวน์โหลดโฟลเดอร์โปรเจกต์นี้
-3. Windows: ดับเบิลคลิก `scripts/start-game.bat` แล้วรอข้อความเริ่มเซิร์ฟเวอร์
+3. Windows: ดับเบิลคลิก **START-GAME.bat** ที่โฟลเดอร์หลัก รอให้ติดตั้ง/build เสร็จ เบราว์เซอร์จะเปิดเกมให้เอง
 4. Mac/Linux: รัน `bash scripts/start-game.sh`
-5. พิมพ์ `localhost:3000` ในเบราว์เซอร์ของเครื่องนั้น สมัครบัญชี แล้วเก็บ recovery code ไว้ในที่ปลอดภัย
+5. สมัครบัญชีและเก็บ recovery code ไว้ในที่ปลอดภัย ปิดเกมด้วย **STOP-GAME.bat**
 
-ไม่ต้องเขียนโค้ดหรือสมัครฐานข้อมูลภายนอก สคริปต์จะติดตั้ง dependencies และ build เกมให้ ต้องใช้อินเทอร์เน็ตครั้งแรก เปิดหน้าต่างเซิร์ฟเวอร์ค้างไว้ขณะเล่น Windows launcher จัดเตรียมไว้ แต่ไม่ได้ทดสอบบน Windows ในเซสชันนี้
+ไม่ต้องเขียนโค้ดหรือสมัครฐานข้อมูลภายนอก สคริปต์จะติดตั้ง dependencies และ build เกมให้ ต้องใช้อินเทอร์เน็ตครั้งแรก launcher เริ่มเซิร์ฟเวอร์เบื้องหลังและป้องกันการเปิดซ้ำ ดู [วิธีใช้ Windows](WINDOWS-INSTRUCTIONS.md) ผล Windows จริงยังต้องตรวจจาก CI
 
 **สถานะลิงก์ออนไลน์:** ยังไม่ได้ deploy สู่โฮสต์สาธารณะ ไม่มี URL ออนไลน์ที่ยืนยันแล้ว เซิร์ฟเวอร์ที่รันใน workspace นี้เป็นคนละเครื่องกับคอมพิวเตอร์ของคุณ โปรดอย่าเข้าใจว่า localhost ของคุณเชื่อมไปยังเครื่องนี้ได้
 
@@ -54,7 +54,7 @@ npm run test:e2e
 
 `npm run dev` provides Vite middleware + API on port 3000. Production startup serves `dist/`. Windows equivalent: set `COOKIE_SECURE=false` in the process environment before `npm start`. `.env.example` documents options; `.env` is not automatically loaded. Use `node --env-file=.env backend/server.js --production` after building to load it explicitly.
 
-Playwright configuration uses `/usr/bin/chromium` in this cloud workspace. On another machine, install Chromium with `npx playwright install chromium` and set `CHROMIUM_PATH` to the executable, or set that configuration's `executablePath` to `undefined` to use Playwright's managed browser. Browser test database: `/tmp/dream-e2e.sqlite`, separate from real player data. Tests use unique usernames and retain no real passwords or credentials.
+Playwright configuration automatically uses `/usr/bin/chromium` when available in this cloud workspace, otherwise the managed browser. On another machine, install Chromium with `npx playwright install chromium` and set `CHROMIUM_PATH` to the executable, or set that configuration's `executablePath` to `undefined` to use Playwright's managed browser. Browser test database: `/tmp/dream-e2e.sqlite`, separate from real player data. Tests use unique usernames and retain no real passwords or credentials.
 
 See [GAME_RULES.md](GAME_RULES.md), [ECONOMY_BALANCE.md](ECONOMY_BALANCE.md), [DEPLOYMENT.md](DEPLOYMENT.md), [DEVELOPMENT_PROGRESS.md](DEVELOPMENT_PROGRESS.md), and [docs/MASTER_PROMPT.md](docs/MASTER_PROMPT.md).
 
@@ -69,3 +69,7 @@ See [GAME_RULES.md](GAME_RULES.md), [ECONOMY_BALANCE.md](ECONOMY_BALANCE.md), [D
 - `assets/`: licensing notes for generated graphics.
 
 The server is authoritative for balances, fish ownership, DNA, timers, auction escrow and online rewards. Browser caching is visual only. All mutating game requests need an idempotency key. Passwords use salted scrypt; recovery codes are hashed; sessions use hashed random tokens and HttpOnly/SameSite cookies. See deployment documentation before making the service publicly accessible.
+
+## Online / GitHub Pages
+
+See [online setup and access blockers](docs/ONLINE_SETUP.md). Pages subpath and separate-origin authenticated API are implemented and tested locally. `.github/workflows/ci.yml` tests Ubuntu/Windows; `pages.yml` publishes only after a real HTTPS backend is configured. No public deployment is claimed. Windows package: `npm run package:windows`; output `artifacts/dream-aquarium-windows.zip`.

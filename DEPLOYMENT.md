@@ -52,3 +52,7 @@ DOCKER_CONFIG=/workspace/.docker docker build --build-context npm-cache=/workspa
 `DOCKER_CONFIG` redirects Docker's writable client metadata in this cloud only. On an ordinary computer, `scripts/build-container-offline.sh` prepares its own cache and builds. `Dockerfile` is the normal network-enabled variant; it optionally accepts a BuildKit secret named `extra_ca` containing an existing trusted CA certificate, if the organization's proxy requires one. Do not disable TLS verification or embed proxy credentials in image layers.
 
 The validation container uses COOKIE_SECURE=false for local HTTP smoke checks. `scripts/container-smoke.js` registers an isolated synthetic account and checks real game mutations; never run it against a live public player database without intending to create that test account.
+
+## Repair release: launcher, split-origin Pages and verified backup
+
+The updated root START-GAME.bat/STOP-GAME.bat replace the old foreground-only launcher. See WINDOWS-INSTRUCTIONS.md. GitHub Pages/API configuration, tab-scoped sessions, workflow settings, current API access blocker and non-free Render option are detailed in docs/ONLINE_SETUP.md. Online SQLite backup and restore-to-new-file are now implemented in scripts/backup.js and tested; offsite managed backups remain unconfigured. Older notes about backup tools being entirely unimplemented are superseded by this section.

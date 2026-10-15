@@ -51,22 +51,34 @@ export async function createApp({
       );
     next();
   });
+  if (process.env.TRUST_PROXY_HOPS)
+    app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS));
+  app.use("/api", (req, res, next) => {
+    const origin = req.get("origin");
+    const own =
+      process.env.PUBLIC_ORIGIN || `${req.protocol}://${req.get("host")}`;
+    const remote = process.env.FRONTEND_ORIGIN;
+    if (origin && origin !== own && origin !== remote)
+      return res.status(403).json({ error: "Cross-origin request blocked" });
+    if (origin && origin === remote && origin !== own) {
+      req.remoteFrontend = true;
+      res.set({
+        "Access-Control-Allow-Origin": origin,
+        Vary: "Origin",
+        "Access-Control-Allow-Headers":
+          "Content-Type, Authorization, Idempotency-Key",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Max-Age": "600",
+      });
+    }
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
   app.use("/api", express.json({ limit: "128kb" }));
   const limits = new Map();
   app.use("/api", (req, res, next) => {
     res.set("Cache-Control", "no-store");
-    if (req.method !== "GET") {
-      const origin = req.get("origin");
-      if (
-        origin &&
-        origin !==
-          (process.env.PUBLIC_ORIGIN || `${req.protocol}://${req.get("host")}`)
-      )
-        return res.status(403).json({ error: "Cross-origin request blocked" });
-    }
-    const key =
-      req.socket.remoteAddress +
-      (req.path.startsWith("/auth") ? ":auth" : ":game");
+    const key = req.ip + (req.path.startsWith("/auth") ? ":auth" : ":game");
     const now = Date.now();
     let l = limits.get(key);
     if (!l || now > l.end) {
@@ -95,13 +107,18 @@ export async function createApp({
       maxAge: 30 * 86400000,
       path: "/",
     });
+    return req.remoteFrontend ? { sessionToken: token } : {};
   }
   function auth(req, res, next) {
-    const raw = (req.headers.cookie || "")
+    const cookie = (req.headers.cookie || "")
       .split(";")
       .map((s) => s.trim())
       .find((s) => s.startsWith("dream_session="))
       ?.slice(14);
+    const bearer = req
+      .get("authorization")
+      ?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
+    const raw = bearer || cookie;
     const row =
       raw &&
       db
@@ -114,7 +131,12 @@ export async function createApp({
   }
   app.get("/api/health", (req, res) => {
     db.prepare("SELECT 1").get();
-    res.json({ status: "ok", database: "ready" });
+    res.json({
+      status: "ok",
+      database: "ready",
+      application: "dream-aquarium",
+      instanceId: process.env.LAUNCHER_INSTANCE || null,
+    });
   });
   app.post("/api/auth/:operation", (req, res) => {
     try {
@@ -154,8 +176,8 @@ export async function createApp({
           JSON.stringify(initialState()),
         );
         save(db, id, load(db, id));
-        session(req, res, id);
-        return res.json({ recoveryCode: code });
+        const auth = session(req, res, id);
+        return res.json({ recoveryCode: code, ...auth });
       }
       if (op === "recover") {
         requireThat(
@@ -176,15 +198,15 @@ export async function createApp({
           );
           db.prepare("DELETE FROM sessions WHERE user_id=?").run(user.id);
         });
-        session(req, res, user.id);
-        return res.json({ recoveryCode: code });
+        const auth = session(req, res, user.id);
+        return res.json({ recoveryCode: code, ...auth });
       }
       requireThat(
         user && verify(password, user.password),
         "Invalid username or password",
       );
-      session(req, res, user.id);
-      res.json({ ok: true });
+      const auth = session(req, res, user.id);
+      res.json({ ok: true, ...auth });
     } catch (e) {
       res
         .status(e.status || 500)
@@ -347,7 +369,7 @@ if (
 ) {
   const app = await createApp();
   const port = Number(process.env.PORT || 3000);
-  const server = app.listen(port, "0.0.0.0", () =>
+  const server = app.listen(port, process.env.HOST || "0.0.0.0", () =>
     console.log(`Dream Aquarium listening on port ${port}`),
   );
   const ticker = setInterval(() => {
@@ -366,4 +388,11 @@ if (
   }, 15000);
   ticker.unref();
   server.on("close", () => clearInterval(ticker));
+  for (const signal of ["SIGTERM", "SIGINT"])
+    process.on(signal, () =>
+      server.close(() => {
+        app.locals.db.close();
+        process.exit(0);
+      }),
+    );
 }

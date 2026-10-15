@@ -1,0 +1,17 @@
+# Repair audit (2026-10-15 Asia/Bangkok)
+
+## Confirmed findings and corrections
+
+1. **Windows startup UX incomplete:** only nested foreground batch, no root START/STOP, browser readiness, owned-process record or duplicate protection. Added root launchers and portable Node orchestrator: version check, frozen dependency install only when needed, supported migration/build, loopback-only detached process, readiness polling, automatic default browser, PID + random instance matching, atomic startup lock and friendly failure output. Stop never invokes taskkill on all Node processes. Tests install from a fresh directory containing spaces, reopen without second PID, stop/restart, preserve session/wallet/DNA and refuse foreign occupied ports.
+2. **Read-only home cache in cloud:** fresh launcher install initially failed attempting npm cache under /home/agent. Corrected explicit relative cache data/npm-cache (also works with spaces in project path), without disabling TLS/checksums or changing expected integrity.
+3. **Pages path broken:** absolute root icon/manifest/assets/service-worker shell references. Configurable VITE_BASE, base-relative manifest/icons/SW scope, scope-specific cache and safe online shell refresh now support /dream-aquarium/. Tested actual static production build on a separate HTTP origin.
+4. **Split-origin authentication impossible:** API hard-coded same-origin and Strict cookie could not support GitHub Pages with third-party-cookie restrictions. Added explicit CORS allowlist/preflight and origin-scoped session-token response; Pages uses Authorization + sessionStorage and omit credentials, same-origin still uses HttpOnly cookies. Token hash/expiry, ownership, idempotency and all business logic remain server-side. Tested token logout/revocation, remote actions, denied foreign origins, zero cookie dependency and reload.
+5. **Reverse-proxy rate limiting:** previously all clients behind a proxy could share socket IP; configurable exact TRUST_PROXY_HOPS now uses Express req.ip. Do not set unless matching actual trusted deployment.
+6. **Backup recovery not automated:** added SQLite online backup + integrity verification and restore-to-new-file, refuses overwrite, tested on active WAL database. Offsite storage still requires operator provisioning.
+7. **Deployment not reproducible through GitHub:** added Linux/Windows CI, Windows artifact packaging, guarded Pages deployment on main, actual-backend health prerequisite, and durable-disk hosting template/runbook. Backend API credentials are never shipped to client; public API origin is build config. No balance, fish, rarity or reward probability changes.
+
+## Verification
+
+`npm test`: 26 passing unit/API/integration/database/security/launcher cases (see final report for rerun status). `npm run test:e2e`: 3 passing real Chromium game journeys, including real breeding countdown, market and maintenance. `npm run test:pages`: 1 passing Pages-subpath/remote-API/cookie-free-session/mobile-tablet-desktop/offline/reconnect journey. npm production dependency audit reports zero vulnerabilities, not a guarantee of exploit-free behavior.
+
+These Linux results do not establish execution on Windows. Windows CI is prepared but its actual remote result needs verified GitHub Actions access. A local static origin is not a deployed GitHub Pages URL. No database/provider account or paid resource was created. See ONLINE_SETUP.md for current external blockers.
