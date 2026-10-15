@@ -55,3 +55,54 @@ test("Pages subpath, remote API without third-party cookies, reload, offline and
   expect(errors).toEqual([]);
   expect(failed).toEqual([]);
 });
+
+test("a committed action with a lost 5xx response retries its original key without a second charge", async ({
+  page,
+}) => {
+  await page.goto("/dream-aquarium/");
+  await page
+    .getByLabel("Username", { exact: true })
+    .fill("retry_" + Date.now());
+  await page.getByLabel("Password", { exact: true }).fill("retry-password-123");
+  await page.getByRole("button", { name: "Create aquarium →" }).click();
+  await page
+    .getByRole("button", { name: "I have saved my recovery code" })
+    .click();
+  await expect(page.getByText("3,000", { exact: true })).toBeVisible();
+  let injected = false;
+  const keys = [];
+  await page.route("**/api/action", async (route) => {
+    if (route.request().postDataJSON()?.type !== "gacha")
+      return route.continue();
+    keys.push(route.request().headers()["idempotency-key"]);
+    if (!injected) {
+      injected = true;
+      // Let the real backend commit, then simulate failure of its acknowledgement.
+      const response = await route.fetch();
+      expect(response.status()).toBe(200);
+      await route.fulfill({
+        response,
+        status: 503,
+        json: { error: "Acknowledgement lost" },
+      });
+    } else await route.continue();
+  });
+  await page.locator("nav").getByRole("button", { name: "Discovery" }).click();
+  const roll = page.getByRole("button", {
+    name: "Discover ×1 · 100 ◈",
+    exact: true,
+  });
+  await roll.click();
+  await expect(page.getByText(/Connection lost/)).toBeVisible();
+  await page.getByRole("button", { name: "Reconnect", exact: true }).click();
+  await expect(page.getByText(/Connection lost/)).toHaveCount(0);
+  await expect(page.getByText("2,900", { exact: true })).toBeVisible();
+  await roll.click();
+  await expect(
+    page.getByText("Saved to your aquarium", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("2,900", { exact: true })).toBeVisible();
+  expect(keys).toHaveLength(2);
+  expect(keys[0]).toBeTruthy();
+  expect(keys[1]).toBe(keys[0]);
+});

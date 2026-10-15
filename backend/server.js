@@ -17,7 +17,6 @@ import {
   publicState,
   action,
   settle,
-  setMaintenance,
   requireThat,
 } from "./game.js";
 const digest = (s) => createHash("sha256").update(s).digest("hex");
@@ -33,9 +32,32 @@ function verify(password, stored) {
   );
 }
 export async function createApp({
-  db = openDB(),
+  db,
   production = process.env.NODE_ENV === "production",
 } = {}) {
+  if (process.env.RENDER) {
+    if (
+      !production ||
+      process.env.COOKIE_SECURE !== "true" ||
+      process.env.TRUST_PROXY_HOPS !== "1"
+    )
+      throw Error(
+        "Render requires production mode, COOKIE_SECURE=true and TRUST_PROXY_HOPS=1",
+      );
+    for (const name of ["PUBLIC_ORIGIN", "FRONTEND_ORIGIN"]) {
+      let url;
+      try {
+        url = new URL(process.env[name]);
+      } catch {
+        throw Error(`${name} must be an HTTPS origin`);
+      }
+      if (url.protocol !== "https:" || url.origin !== process.env[name])
+        throw Error(
+          `${name} must be an HTTPS origin without a path or trailing slash`,
+        );
+    }
+  }
+  db ??= await openDB();
   const app = express();
   app.disable("x-powered-by");
   app.use((req, res, next) => {
@@ -65,6 +87,7 @@ export async function createApp({
       res.set({
         "Access-Control-Allow-Origin": origin,
         Vary: "Origin",
+        "Access-Control-Allow-Credentials": "true",
         "Access-Control-Allow-Headers":
           "Content-Type, Authorization, Idempotency-Key",
         "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -93,23 +116,21 @@ export async function createApp({
       for (const [k, v] of limits) if (v.end < now) limits.delete(k);
     next();
   });
-  function session(req, res, id) {
+  async function session(req, res, id) {
     const token = randomBytes(32).toString("hex");
-    db.prepare("INSERT INTO sessions VALUES(?,?,?)").run(
-      digest(token),
-      id,
-      Date.now() + 30 * 86400000,
-    );
+    await db
+      .prepare("INSERT INTO sessions VALUES(?,?,?)")
+      .run(digest(token), id, Date.now() + 30 * 86400000);
     res.cookie("dream_session", token, {
       httpOnly: true,
-      sameSite: "strict",
+      sameSite: req.remoteFrontend && production ? "none" : "strict",
       secure: production && process.env.COOKIE_SECURE !== "false",
       maxAge: 30 * 86400000,
       path: "/",
     });
     return req.remoteFrontend ? { sessionToken: token } : {};
   }
-  function auth(req, res, next) {
+  async function auth(req, res, next) {
     const cookie = (req.headers.cookie || "")
       .split(";")
       .map((s) => s.trim())
@@ -121,24 +142,43 @@ export async function createApp({
     const raw = bearer || cookie;
     const row =
       raw &&
-      db
+      (await db
         .prepare("SELECT * FROM sessions WHERE token=? AND expires>?")
-        .get(digest(raw), Date.now());
+        .get(digest(raw), Date.now()));
     if (!row) return res.status(401).json({ error: "Please sign in" });
     req.user = row.user_id;
     req.session = digest(raw);
     next();
   }
-  app.get("/api/health", (req, res) => {
-    db.prepare("SELECT 1").get();
-    res.json({
-      status: "ok",
-      database: "ready",
-      application: "dream-aquarium",
-      instanceId: process.env.LAUNCHER_INSTANCE || null,
-    });
+  async function requireSession(req) {
+    const row = await db
+      .prepare("SELECT user_id FROM sessions WHERE token=? AND expires>?")
+      .get(req.session, Date.now());
+    if (!row) {
+      const e = Error("Please sign in");
+      e.status = 401;
+      throw e;
+    }
+  }
+  app.get("/api/health", async (req, res) => {
+    try {
+      await db.prepare("SELECT 1").get();
+      res.json({
+        status: "ok",
+        database: "ready",
+        databaseEngine: db.dialect === "postgres" ? "postgresql" : "sqlite",
+        application: "dream-aquarium",
+        instanceId: process.env.LAUNCHER_INSTANCE || null,
+      });
+    } catch {
+      res.status(503).json({
+        status: "unavailable",
+        database: "unavailable",
+        application: "dream-aquarium",
+      });
+    }
   });
-  app.post("/api/auth/:operation", (req, res) => {
+  app.post("/api/auth/:operation", async (req, res) => {
     try {
       const { username, password, recovery } = req.body;
       const op = req.params.operation;
@@ -156,75 +196,89 @@ export async function createApp({
           password.length <= 128,
         "Password: 10–128 characters",
       );
-      const user = db
-        .prepare("SELECT * FROM users WHERE username=? COLLATE NOCASE")
-        .get(username);
-      if (op === "register") {
-        requireThat(
-          db.prepare("SELECT value FROM meta WHERE key='maintenance'").get()
-            .value === "0",
-          "Maintenance: new aquarium registration is paused",
-        );
-        requireThat(!user, "Username already taken");
-        const id = randomUUID(),
-          code = randomBytes(24).toString("hex");
-        db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(
-          id,
-          username,
-          hash(password),
-          digest(code),
-          JSON.stringify(initialState()),
-        );
-        save(db, id, load(db, id));
-        const auth = session(req, res, id);
-        return res.json({ recoveryCode: code, ...auth });
-      }
-      if (op === "recover") {
-        requireThat(
-          user &&
-            typeof recovery === "string" &&
-            timingSafeEqual(
-              Buffer.from(user.recovery),
-              Buffer.from(digest(recovery)),
-            ),
-          "Invalid account or recovery code",
-        );
-        const code = randomBytes(24).toString("hex");
-        transaction(db, () => {
-          db.prepare("UPDATE users SET password=?,recovery=? WHERE id=?").run(
-            hash(password),
-            digest(code),
-            user.id,
+      const result = await transaction(db, async () => {
+        const user = await db
+          .prepare("SELECT * FROM users WHERE LOWER(username)=LOWER(?)")
+          .get(username);
+        if (op === "register") {
+          requireThat(
+            (
+              await db
+                .prepare("SELECT value FROM meta WHERE key='maintenance'")
+                .get()
+            ).value === "0",
+            "Maintenance: new aquarium registration is paused",
           );
-          db.prepare("DELETE FROM sessions WHERE user_id=?").run(user.id);
-        });
-        const auth = session(req, res, user.id);
-        return res.json({ recoveryCode: code, ...auth });
-      }
-      requireThat(
-        user && verify(password, user.password),
-        "Invalid username or password",
-      );
-      const auth = session(req, res, user.id);
-      res.json({ ok: true, ...auth });
+          requireThat(!user, "Username already taken");
+          const id = randomUUID(),
+            code = randomBytes(24).toString("hex");
+          await db
+            .prepare("INSERT INTO users VALUES(?,?,?,?,?)")
+            .run(
+              id,
+              username,
+              hash(password),
+              digest(code),
+              JSON.stringify(initialState()),
+            );
+          await save(db, id, await load(db, id));
+          const auth = await session(req, res, id);
+          return { recoveryCode: code, ...auth };
+        }
+        if (op === "recover") {
+          requireThat(
+            user &&
+              typeof recovery === "string" &&
+              timingSafeEqual(
+                Buffer.from(user.recovery),
+                Buffer.from(digest(recovery)),
+              ),
+            "Invalid account or recovery code",
+          );
+          const code = randomBytes(24).toString("hex");
+          await transaction(db, async () => {
+            await db
+              .prepare("UPDATE users SET password=?,recovery=? WHERE id=?")
+              .run(hash(password), digest(code), user.id);
+            await db
+              .prepare("DELETE FROM sessions WHERE user_id=?")
+              .run(user.id);
+          });
+          const auth = await session(req, res, user.id);
+          return { recoveryCode: code, ...auth };
+        }
+        requireThat(
+          user && verify(password, user.password),
+          "Invalid username or password",
+        );
+        const auth = await session(req, res, user.id);
+        return { ok: true, ...auth };
+      });
+      res.json(result);
     } catch (e) {
       res
         .status(e.status || 500)
         .json({ error: e.status ? e.message : "Authentication failed" });
     }
   });
-  app.post("/api/logout", auth, (req, res) => {
-    db.prepare("DELETE FROM sessions WHERE token=?").run(req.session);
+  app.post("/api/logout", auth, async (req, res) => {
+    await transaction(db, async () => {
+      await db.prepare("DELETE FROM sessions WHERE token=?").run(req.session);
+    });
     res.clearCookie("dream_session", { path: "/" });
     res.json({ ok: true });
   });
-  app.get("/api/market", auth, (req, res) => {
-    const result = transaction(db, () => {
+  app.get("/api/market", auth, async (req, res) => {
+    const result = await transaction(db, async () => {
+      await requireSession(req);
       if (
-        db.prepare("SELECT value FROM meta WHERE key='maintenance'").get()
-          .value === "0"
+        (
+          await db
+            .prepare("SELECT value FROM meta WHERE key='maintenance'")
+            .get()
+        ).value === "0"
       )
-        settle(db);
+        await settle(db);
       const clauses = ["l.status='open'"],
         values = [];
       const q = req.query;
@@ -255,46 +309,51 @@ export async function createApp({
       const from =
         " FROM listings l JOIN users u ON l.seller=u.id WHERE " +
         clauses.join(" AND ");
-      const total = db
-        .prepare("SELECT count(*) total" + from)
-        .get(...values).total;
+      const total = (
+        await db.prepare("SELECT count(*) total" + from).get(...values)
+      ).total;
       const page = Math.max(
         1,
         Math.min(Math.ceil(total / 24) || 1, Number.parseInt(q.page) || 1),
       );
-      const items = db
-        .prepare(
-          "SELECT l.*,u.username seller_name" +
-            from +
-            " ORDER BY " +
-            sort +
-            " LIMIT 24 OFFSET ?",
-        )
-        .all(...values, (page - 1) * 24)
-        .map((l) => ({ ...l, fish: JSON.parse(l.fish) }));
+      const items = (
+        await db
+          .prepare(
+            "SELECT l.*,u.username seller_name" +
+              from +
+              " ORDER BY " +
+              sort +
+              " LIMIT 24 OFFSET ?",
+          )
+          .all(...values, (page - 1) * 24)
+      ).map((l) => ({ ...l, fish: JSON.parse(l.fish) }));
       return { items, total, page, pages: Math.ceil(total / 24) || 1 };
     });
     res.json(result);
   });
-  app.get("/api/lineage/:id", auth, (req, res) => {
-    const f = db
+  app.get("/api/lineage/:id", auth, async (req, res) => {
+    const f = await db
       .prepare("SELECT fish FROM lineage WHERE id=?")
       .get(req.params.id);
     if (!f) return res.status(404).json({ error: "Ancestor not found" });
     res.json(JSON.parse(f.fish));
   });
-  app.get("/api/state", auth, (req, res) => {
-    const state = transaction(db, () => {
+  app.get("/api/state", auth, async (req, res) => {
+    const state = await transaction(db, async () => {
+      await requireSession(req);
       if (
-        db.prepare("SELECT value FROM meta WHERE key='maintenance'").get()
-          .value === "0"
+        (
+          await db
+            .prepare("SELECT value FROM meta WHERE key='maintenance'")
+            .get()
+        ).value === "0"
       )
-        settle(db);
-      return publicState(db, req.user);
+        await settle(db);
+      return await publicState(db, req.user);
     });
     res.json(state);
   });
-  app.post("/api/action", auth, (req, res) => {
+  app.post("/api/action", auth, async (req, res) => {
     try {
       const key = req.get("Idempotency-Key");
       requireThat(
@@ -307,13 +366,17 @@ export async function createApp({
         "Invalid request",
       );
       const body = JSON.stringify(req.body);
-      const result = transaction(db, () => {
+      const result = await transaction(db, async () => {
+        await requireSession(req);
         requireThat(
-          db.prepare("SELECT value FROM meta WHERE key='maintenance'").get()
-            .value === "0",
+          (
+            await db
+              .prepare("SELECT value FROM meta WHERE key='maintenance'")
+              .get()
+          ).value === "0",
           "Maintenance: aquarium is view-only",
         );
-        const old = db
+        const old = await db
           .prepare("SELECT * FROM requests WHERE user_id=? AND key=?")
           .get(req.user, key);
         if (old) {
@@ -321,25 +384,23 @@ export async function createApp({
             old.body === body,
             "Idempotency key reused with different request",
           );
-          return publicState(db, req.user);
+          return await publicState(db, req.user);
         }
-        settle(db);
-        const state = action(db, req.user, type, payload);
-        db.prepare("INSERT INTO requests VALUES(?,?,?,?)").run(
-          req.user,
-          key,
-          body,
-          "ok",
-        );
+        await settle(db);
+        const state = await action(db, req.user, type, payload);
+        await db
+          .prepare("INSERT INTO requests VALUES(?,?,?,?)")
+          .run(req.user, key, body, "ok");
         return state;
       });
       res.json(result);
     } catch (e) {
-      if (!e.status) console.error(e);
-      res.status(e.status || 500).json({
+      if (!e.status)
+        console.error("Game transaction failed", e.code || "internal");
+      res.status(e.status || 503).json({
         error: e.status
           ? e.message
-          : "Server error. No transaction was applied.",
+          : "Server could not confirm the result. Reconnect and retry with the same request key.",
       });
     }
   });
@@ -357,9 +418,15 @@ export async function createApp({
     app.use(vite.middlewares);
     app.locals.vite = vite;
   }
-  app.use((e, req, res, next) =>
-    res.status(400).json({ error: "Invalid request" }),
-  );
+  app.use((e, req, res, next) => {
+    const status = e.status || 503;
+    res.status(status).json({
+      error:
+        status < 500
+          ? e.message
+          : "Database temporarily unavailable. Please retry.",
+    });
+  });
   app.locals.db = db;
   return app;
 }
@@ -370,29 +437,40 @@ if (
   const app = await createApp();
   const port = Number(process.env.PORT || 3000);
   const server = app.listen(port, process.env.HOST || "0.0.0.0", () =>
-    console.log(`Dream Aquarium listening on port ${port}`),
+    console.log(`Dream Aquarium listening on port ${server.address().port}`),
   );
-  const ticker = setInterval(() => {
+  let ticking = false,
+    stopping = false;
+  const ticker = setInterval(async () => {
+    if (ticking || stopping) return;
+    ticking = true;
     try {
-      transaction(app.locals.db, () => {
+      await transaction(app.locals.db, async () => {
         if (
-          app.locals.db
-            .prepare("SELECT value FROM meta WHERE key='maintenance'")
-            .get().value === "0"
+          (
+            await app.locals.db
+              .prepare("SELECT value FROM meta WHERE key='maintenance'")
+              .get()
+          ).value === "0"
         )
-          settle(app.locals.db);
+          await settle(app.locals.db);
       });
     } catch (e) {
-      console.error("Auction settlement failed", e.message);
+      console.error("Auction settlement failed", e.code || "internal");
+    } finally {
+      ticking = false;
     }
   }, 15000);
   ticker.unref();
   server.on("close", () => clearInterval(ticker));
   for (const signal of ["SIGTERM", "SIGINT"])
-    process.on(signal, () =>
-      server.close(() => {
-        app.locals.db.close();
+    process.once(signal, () => {
+      stopping = true;
+      clearInterval(ticker);
+      server.close(async () => {
+        // pool.end waits for in-flight transactions before shutdown.
+        await app.locals.db.close();
         process.exit(0);
-      }),
-    );
+      });
+    });
 }

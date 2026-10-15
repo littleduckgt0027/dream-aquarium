@@ -195,7 +195,7 @@ function App() {
       return s;
     } catch (e) {
       setNotice(e.message);
-      if (e.status) pending.current = null;
+      if (e.status && e.status < 500) pending.current = null;
       else setOnline(false);
     } finally {
       setBusy(false);

@@ -1,3 +1,4 @@
+import { testDatabase } from "./helpers/database.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { openDB } from "../backend/db.js";
@@ -5,7 +6,7 @@ import { createApp } from "../backend/server.js";
 test("Pages cross-origin bearer sessions support refresh, actions and revocation; foreign origins blocked", async () => {
   const old = process.env.FRONTEND_ORIGIN;
   process.env.FRONTEND_ORIGIN = "https://littleduckgt0027.github.io";
-  const db = openDB(":memory:");
+  const db = await testDatabase();
   const app = await createApp({ db, production: true });
   const server = app.listen(0, "127.0.0.1");
   await new Promise((r) => server.once("listening", r));
@@ -37,6 +38,10 @@ test("Pages cross-origin bearer sessions support refresh, actions and revocation
         password: "pages-safe-password",
       }),
     });
+    assert.match(r.headers.get("set-cookie"), /HttpOnly/);
+    assert.match(r.headers.get("set-cookie"), /Secure/);
+    assert.match(r.headers.get("set-cookie"), /SameSite=None/);
+    assert.equal(r.headers.get("access-control-allow-credentials"), "true");
     const user = await r.json();
     assert.match(user.sessionToken, /^[a-f0-9]{64}$/);
     const headers = {
@@ -62,7 +67,7 @@ test("Pages cross-origin bearer sessions support refresh, actions and revocation
     assert.equal((await fetch(base + "/api/state", { headers })).status, 401);
   } finally {
     await new Promise((r) => server.close(r));
-    db.close();
+    await db.close();
     if (old === undefined) delete process.env.FRONTEND_ORIGIN;
     else process.env.FRONTEND_ORIGIN = old;
   }

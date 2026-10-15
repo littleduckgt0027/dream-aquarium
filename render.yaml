@@ -1,21 +1,19 @@
-# Prepared deployment blueprint. This is NOT a free persistent-disk service.
-# Creating this service can incur a charge; owner must explicitly approve in Render.
+# Prepared only: creating/applying this blueprint is an operator deployment step.
 services:
   - type: web
     name: dream-aquarium-api
     runtime: docker
-    plan: starter
+    plan: free
     numInstances: 1
+    autoDeployTrigger: off
     healthCheckPath: /api/health
-    disk:
-      name: aquarium-data
-      mountPath: /app/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DB_PATH
-        value: /app/data/aquarium.sqlite
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_POOL_MAX
+        value: "5"
       - key: COOKIE_SECURE
         value: "true"
       - key: FRONTEND_ORIGIN

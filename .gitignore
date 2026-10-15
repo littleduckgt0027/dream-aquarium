@@ -10,3 +10,11 @@ launcher.local.json
 artifacts/
 
 dist-pages/
+
+.env.*
+!.env.example
+work/
+*.dump
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

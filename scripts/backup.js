@@ -28,6 +28,10 @@ if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
+  if (process.env.DATABASE_URL)
+    throw Error(
+      "PostgreSQL backups require pg_dump / pg_restore; this command copies local SQLite only",
+    );
   const [mode, a, b] = process.argv.slice(2);
   if (mode === "backup" && a)
     await verifiedCopy(process.env.DB_PATH || "data/aquarium.sqlite", a);

@@ -5,3 +5,10 @@ data
 .env
 test-results
 playwright-report
+
+.env.*
+!.env.example
+work
+artifacts
+*.dump
+*.sqlite*

@@ -12,10 +12,13 @@
     "db:migrate": "node backend/migrate.js",
     "format": "prettier --write backend frontend/src shared tests scripts/*.js vite.config.js playwright.config.js",
     "package:windows": "npm run build && node scripts/package-windows.js",
-    "test:pages": "node scripts/test-pages.js"
+    "test:pages": "node scripts/test-pages.js",
+    "test:postgres": "node scripts/test-postgres.js",
+    "db:import:sqlite": "node scripts/import-sqlite.js"
   },
   "dependencies": {
     "express": "^5.1.0",
+    "pg": "^8.23.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "vite": "^7.1.0"

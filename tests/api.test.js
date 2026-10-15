@@ -1,10 +1,11 @@
+import { testDatabase } from "./helpers/database.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createApp } from "../backend/server.js";
 import { openDB } from "../backend/db.js";
 import { setMaintenance, load, save } from "../backend/game.js";
 test("HTTP accounts, recovery, idempotency, race purchase, maintenance, persistence", async () => {
-  const db = openDB(":memory:"),
+  const db = await testDatabase(),
     app = await createApp({ db, production: true }),
     server = app.listen(0, "127.0.0.1");
   await new Promise((r) => server.once("listening", r));
@@ -106,13 +107,13 @@ test("HTTP accounts, recovery, idempotency, race purchase, maintenance, persiste
       (await req("state", { cookie })).data.pearls,
       before - 100 + 900,
     );
-    setMaintenance(db, true);
+    await setMaintenance(db, true);
     assert.equal(
       (await req("action", { cookie, key: "maintenance-1", body })).status,
       400,
     );
     assert.equal((await req("state", { cookie })).data.maintenance, true);
-    setMaintenance(db, false);
+    await setMaintenance(db, false);
     assert.equal(
       (
         await req("auth/login", {
@@ -153,13 +154,13 @@ test("HTTP accounts, recovery, idempotency, race purchase, maintenance, persiste
     assert.equal(login.status, 200);
     await req("logout", { cookie: login.cookie, body: {} });
     assert.equal((await req("state", { cookie: login.cookie })).status, 401);
-    const raw = db
-      .prepare("SELECT password FROM users WHERE id=?")
-      .get(state.id).password;
+    const raw = (
+      await db.prepare("SELECT password FROM users WHERE id=?").get(state.id)
+    ).password;
     assert.ok(!raw.includes("password"));
-    assert.ok(db.prepare("SELECT count(*) n FROM audit").get().n >= 3);
+    assert.ok((await db.prepare("SELECT count(*) n FROM audit").get()).n >= 3);
   } finally {
     await new Promise((r) => server.close(r));
-    db.close();
+    await db.close();
   }
 });

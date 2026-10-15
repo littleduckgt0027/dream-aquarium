@@ -1,5 +1,7 @@
 # Dream Aquarium
 
+Online backend: **Neon PostgreSQL + Render Free**, frontend: **GitHub Pages**. See [setup, environment variables and safe SQLite import](docs/NEON_RENDER.md). Older SQLite deployment notes apply to local desktop use only. No production deployment or data import is performed by this change.
+
 เกมตู้ปลาออนไลน์แบบ full-stack: เลี้ยงปลาที่มี DNA เฉพาะตัว ผสมพันธุ์ สุ่มปลา ซื้อขายและประมูลด้วย Pearl พร้อมบันทึกข้อมูลในฐานข้อมูลจริง
 
 ## เปิดเล่นบนเครื่องตัวเองแบบง่าย

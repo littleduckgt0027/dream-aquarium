@@ -8,29 +8,28 @@ import { initialState } from "../backend/game.js";
 import { verifiedCopy } from "../scripts/backup.js";
 test("live WAL backup and restore preserve accounts and refuse overwrite", async () => {
   const dir = mkdtempSync(join(tmpdir(), "aquarium-backup-"));
-  const db = openDB(join(dir, "live.sqlite"));
+  const db = await openDB(join(dir, "live.sqlite"));
   try {
-    db.prepare("INSERT INTO users VALUES(?,?,?,?,?)").run(
-      "saved",
-      "saved",
-      "hash",
-      "hash",
-      JSON.stringify(initialState()),
-    );
+    await db
+      .prepare("INSERT INTO users VALUES(?,?,?,?,?)")
+      .run("saved", "saved", "hash", "hash", JSON.stringify(initialState()));
     await verifiedCopy(join(dir, "live.sqlite"), join(dir, "backup.sqlite"));
     await verifiedCopy(
       join(dir, "backup.sqlite"),
       join(dir, "restored.sqlite"),
     );
-    const restored = openDB(join(dir, "restored.sqlite"));
-    assert.equal(restored.prepare("SELECT count(*) n FROM users").get().n, 1);
-    restored.close();
+    const restored = await openDB(join(dir, "restored.sqlite"));
+    assert.equal(
+      (await restored.prepare("SELECT count(*) n FROM users").get()).n,
+      1,
+    );
+    await restored.close();
     await assert.rejects(
       () => verifiedCopy(join(dir, "live.sqlite"), join(dir, "backup.sqlite")),
       /already exists/,
     );
   } finally {
-    db.close();
+    await db.close();
     rmSync(dir, { recursive: true, force: true });
   }
 });
