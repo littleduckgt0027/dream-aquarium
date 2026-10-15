@@ -77,3 +77,7 @@ The server is authoritative for balances, fish ownership, DNA, timers, auction e
 ## Online / GitHub Pages
 
 See [online setup and access blockers](docs/ONLINE_SETUP.md). Pages subpath and separate-origin authenticated API are implemented and tested locally. `.github/workflows/ci.yml` tests Ubuntu/Windows; `pages.yml` publishes only after a real HTTPS backend is configured. No public deployment is claimed. Windows package: `npm run package:windows`; output `artifacts/dream-aquarium-windows.zip`.
+
+### Immersive aquarium display
+
+Use Fullscreen Aquarium or Aquarium Background in the Aquarium header, or the layers control in the top bar. Both reuse your living aquarium and remember your preference. [Display controls, accessibility and rendering](docs/IMMERSIVE_AQUARIUM.md).

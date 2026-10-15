@@ -1,3 +1,6 @@
+import AquariumStage from "./AquariumStage.jsx";
+import DisplayControls from "./DisplayControls.jsx";
+import { useDisplay } from "./display.js";
 import {
   t,
   useI18n,
@@ -93,6 +96,7 @@ const nav = [
 ];
 function App() {
   useI18n();
+  const display = useDisplay();
   useEffect(() => audio.attach(), []);
   const RARITIES = RARITY_NAMES.map((name) => t(sourceKeys[name]));
   const [state, setState] = useState(null),
@@ -489,7 +493,7 @@ function App() {
             )}
           </small>
         </section>
-        {notice && (
+        {notice && !display.immersive && (
           <div role="alert" className="toast">
             {systemMessage(notice)}
           </div>
@@ -517,7 +521,9 @@ function App() {
     state.rewards.filter((r) => !r.claimed).length +
     state.deliveries.filter((r) => !r.claimed).length;
   return (
-    <div className="app">
+    <div
+      className={`app ${display.background ? "has-aquarium-background" : ""} ${display.immersive ? "has-immersive-aquarium" : ""}`}
+    >
       <aside className="sidebar">
         <a
           className="brand"
@@ -570,7 +576,7 @@ function App() {
             <b>{t(nav.find((n) => n[0] === screen)?.[2])}</b>
           </div>
           <div className="top-right">
-            <GlobalControls />
+            <GlobalControls displayControls />
             <span className="pearl">
               ◈ <b>{fmt(state.pearls)}</b> <small>{t("ui.pearl")}</small>
             </span>
@@ -592,8 +598,10 @@ function App() {
               <button onClick={refresh}>{t("ui.reconnect")}</button>
             </div>
           )}
-          {screen === "aquarium" && (
-            <>
+          <div
+            className={`aquarium-page ${screen !== "aquarium" ? "inactive" : ""} ${screen === "customize" ? "preview" : ""}`}
+          >
+            {screen === "aquarium" && (
               <div className="page-title">
                 <div>
                   <span className="eyebrow">{t("ui.a_world_of_your_own")}</span>
@@ -607,132 +615,140 @@ function App() {
                     )}
                   </p>
                 </div>
-                <button
-                  className="outline"
-                  onClick={() => setScreen("customize")}
-                >
-                  {t("ui.customize_aquarium")}
-                </button>
-              </div>
-              <section className="tank-view">
-                <Aquarium
-                  fish={tank}
-                  theme={state.theme}
-                  decor={state.decorations[0]}
-                  onSelect={setSelected}
-                  quality={quality}
-                />
-                <div className="tank-top">
-                  <span className="glass-pill">
-                    ◉ &nbsp;{" "}
-                    {state.theme === "midnight"
-                      ? t("ui.midnight_reef")
-                      : state.theme === "coral"
-                        ? t("ui.coral_cove")
-                        : t("ui.emerald_lagoon")}
-                  </span>
-                  <span className="glass-pill">
-                    {tank.length} / {state.tank} {t("ui.fish")}
-                  </span>
-                </div>
-                <div className="tank-caption">
-                  <span>{t("ui.your_living_aquarium")}</span>
-                  <h2>{t("ui.a_moment_of_wonder")}</h2>
-                  <p>{t("ui.tap_a_fish_to_discover_its_story")}</p>
-                </div>
-                <div className="water-label">
-                  {t("ui.procedurally_unique_always_alive")}
-                </div>
-              </section>
-              <div className="stats-row">
-                <div>
-                  <span>◈</span>
-                  <section>
-                    <small>{t("ui.your_collection")}</small>
-                    <b>
-                      {fmt(state.fish.length)} <i>{t("ui.unique_fish")}</i>
-                    </b>
-                  </section>
-                </div>
-                <div>
-                  <span>♡</span>
-                  <section>
-                    <small>{t("ui.nursery")}</small>
-                    <b>
-                      {state.breeds.filter((b) => !b.claimed).length}{" "}
-                      <i>{t("ui.breeding_pairs")}</i>
-                    </b>
-                  </section>
+                <div className="aquarium-header-actions">
+                  <DisplayControls />
                   <button
-                    aria-label={t("ui.breeding")}
-                    onClick={() => setScreen("breed")}
+                    className="outline"
+                    onClick={() => setScreen("customize")}
                   >
-                    <svg
-                      aria-hidden="true"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path d="M4 16 16 4M5 4h11v11" />
-                    </svg>
-                  </button>
-                </div>
-                <div>
-                  <span>◷</span>
-                  <section>
-                    <small>{t("ui.time_to_unwind")}</small>
-                    <b>
-                      {hours(state.online.seconds)} <i>{t("ui.this_month")}</i>
-                    </b>
-                  </section>
-                  <button
-                    aria-label={t("ui.online_rewards")}
-                    onClick={() => setScreen("rewards")}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 20 20"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <path d="M4 16 16 4M5 4h11v11" />
-                    </svg>
+                    {t("ui.customize_aquarium")}
                   </button>
                 </div>
               </div>
-              <div className="section-title">
-                <h2>
-                  {t("ui.swimming_in_your_sanctuary")}{" "}
-                  <span>{tank.length}</span>
-                </h2>
-                <button onClick={() => setScreen("collection")}>
-                  {t("ui.view_collection")}
-                </button>
+            )}
+            <section className="tank-view">
+              <AquariumStage
+                fish={tank}
+                theme={state.theme}
+                decor={state.decorations[0]}
+                onSelect={setSelected}
+                quality={quality}
+              />
+              <div className="tank-top">
+                <span className="glass-pill">
+                  ◉ &nbsp;{" "}
+                  {state.theme === "midnight"
+                    ? t("ui.midnight_reef")
+                    : state.theme === "coral"
+                      ? t("ui.coral_cove")
+                      : t("ui.emerald_lagoon")}
+                </span>
+                <span className="glass-pill">
+                  {tank.length} / {state.tank} {t("ui.fish")}
+                </span>
               </div>
-              <div className="fish-grid">
-                {tank.map((f) => fishCard(f, false))}
+              <div className="tank-caption">
+                <span>{t("ui.your_living_aquarium")}</span>
+                <h2>{t("ui.a_moment_of_wonder")}</h2>
+                <p>{t("ui.tap_a_fish_to_discover_its_story")}</p>
               </div>
-              <div className="discover-banner">
-                <span>✧</span>
-                <div>
-                  <small>{t("ui.a_new_discovery_is_waiting")}</small>
-                  <h2>{t("ui.every_fish_has_a_story_written_in_its_dna")}</h2>
-                  <p>
-                    {t(
-                      "ui.discover_new_colors_extraordinary_fins_and_a_little_bit_of_magic",
-                    )}
-                  </p>
+              <div className="water-label">
+                {t("ui.procedurally_unique_always_alive")}
+              </div>
+            </section>
+            {screen === "aquarium" && (
+              <>
+                <div className="stats-row">
+                  <div>
+                    <span>◈</span>
+                    <section>
+                      <small>{t("ui.your_collection")}</small>
+                      <b>
+                        {fmt(state.fish.length)} <i>{t("ui.unique_fish")}</i>
+                      </b>
+                    </section>
+                  </div>
+                  <div>
+                    <span>♡</span>
+                    <section>
+                      <small>{t("ui.nursery")}</small>
+                      <b>
+                        {state.breeds.filter((b) => !b.claimed).length}{" "}
+                        <i>{t("ui.breeding_pairs")}</i>
+                      </b>
+                    </section>
+                    <button
+                      aria-label={t("ui.breeding")}
+                      onClick={() => setScreen("breed")}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path d="M4 16 16 4M5 4h11v11" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div>
+                    <span>◷</span>
+                    <section>
+                      <small>{t("ui.time_to_unwind")}</small>
+                      <b>
+                        {hours(state.online.seconds)}{" "}
+                        <i>{t("ui.this_month")}</i>
+                      </b>
+                    </section>
+                    <button
+                      aria-label={t("ui.online_rewards")}
+                      onClick={() => setScreen("rewards")}
+                    >
+                      <svg
+                        aria-hidden="true"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path d="M4 16 16 4M5 4h11v11" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <button onClick={() => setScreen("gacha")}>
-                  {t("ui.discover_fish")}
-                </button>
-              </div>
-            </>
-          )}
+                <div className="section-title">
+                  <h2>
+                    {t("ui.swimming_in_your_sanctuary")}{" "}
+                    <span>{tank.length}</span>
+                  </h2>
+                  <button onClick={() => setScreen("collection")}>
+                    {t("ui.view_collection")}
+                  </button>
+                </div>
+                <div className="fish-grid">
+                  {tank.map((f) => fishCard(f, false))}
+                </div>
+                <div className="discover-banner">
+                  <span>✧</span>
+                  <div>
+                    <small>{t("ui.a_new_discovery_is_waiting")}</small>
+                    <h2>{t("ui.every_fish_has_a_story_written_in_its_dna")}</h2>
+                    <p>
+                      {t(
+                        "ui.discover_new_colors_extraordinary_fins_and_a_little_bit_of_magic",
+                      )}
+                    </p>
+                  </div>
+                  <button onClick={() => setScreen("gacha")}>
+                    {t("ui.discover_fish")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           {screen === "collection" && (
             <>
               <Title
@@ -1688,12 +1704,7 @@ function App() {
                   "ui.choose_a_backdrop_grow_a_garden_and_give_your_fish_more_room",
                 )}
               />
-              <Aquarium
-                fish={tank}
-                theme={state.theme}
-                decor={state.decorations[0]}
-                onSelect={setSelected}
-              />
+
               <section className="panel">
                 <form
                   onSubmit={(e) => {
@@ -1861,7 +1872,7 @@ function App() {
           </footer>
         </main>
       </div>
-      {selected && (
+      {selected && !display.immersive && (
         <div className="modal-backdrop" onClick={() => setSelected(null)}>
           <section
             className="modal"
@@ -1983,7 +1994,7 @@ function App() {
           </section>
         </div>
       )}
-      {recoveryCode && (
+      {recoveryCode && !display.immersive && (
         <div className="modal-backdrop">
           <section
             className="modal"
@@ -2004,7 +2015,7 @@ function App() {
           </section>
         </div>
       )}
-      {notice && (
+      {notice && !display.immersive && (
         <div className="toast" role="alert">
           {systemMessage(notice)}
         </div>

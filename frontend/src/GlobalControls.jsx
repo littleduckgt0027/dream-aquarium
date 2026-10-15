@@ -5,8 +5,9 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import { LANGUAGES, useI18n, number } from "./i18n/index.js";
+import DisplayControls, { LayersIcon } from "./DisplayControls.jsx";
 import { audio } from "./audio.js";
-export default function GlobalControls() {
+export default function GlobalControls({ displayControls = false }) {
   const { t, language, setLanguage } = useI18n(),
     [panel, setPanel] = useState(null),
     root = useRef(null),
@@ -31,7 +32,9 @@ export default function GlobalControls() {
     document.addEventListener("keydown", escape);
     root.current
       ?.querySelector(
-        panel === "language" ? '[aria-checked="true"]' : ".sound-panel button",
+        panel === "language"
+          ? '[aria-checked="true"]'
+          : ".control-panel button",
       )
       ?.focus();
     return () => {
@@ -84,6 +87,26 @@ export default function GlobalControls() {
       >
         <span aria-hidden="true">{active && !prefs.muted ? "♫" : "♩"}</span>
       </button>
+      {displayControls && (
+        <button
+          className="control-trigger display-trigger"
+          aria-label={t("display.controls")}
+          aria-haspopup="dialog"
+          aria-expanded={panel === "display"}
+          onClick={(e) => toggle("display", e)}
+        >
+          <LayersIcon />
+        </button>
+      )}
+      {panel === "display" && (
+        <section
+          className="control-panel display-panel"
+          role="dialog"
+          aria-label={t("display.controls")}
+        >
+          <DisplayControls onAction={() => setPanel(null)} />
+        </section>
+      )}
       {panel === "language" && (
         <div
           className="control-panel language-panel"

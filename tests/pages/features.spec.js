@@ -139,7 +139,9 @@ test("sound waits for a gesture, keeps preferences through refresh, handles offl
   });
   await register(page);
   expect(await page.evaluate(() => window.__audioContexts.length)).toBe(0);
-  await page.locator('.global-controls button[aria-haspopup="dialog"]').click();
+  await page
+    .locator(".global-controls [data-audio-control].control-trigger")
+    .click();
   await expect(
     page.getByRole("dialog", { name: text("th", "Sound settings") }),
   ).toBeVisible();
@@ -225,7 +227,9 @@ test("sound waits for a gesture, keeps preferences through refresh, handles offl
     ),
   ).toBeVisible();
   expect(await page.evaluate(() => window.__audioContexts.length)).toBe(0);
-  await page.locator('.global-controls button[aria-haspopup="dialog"]').click();
+  await page
+    .locator(".global-controls [data-audio-control].control-trigger")
+    .click();
   await expect(
     page.getByRole("slider", { name: new RegExp(text("th", "Music Volume")) }),
   ).toHaveValue("19");
@@ -262,7 +266,9 @@ test("language menu is keyboard accessible and unavailable audio APIs are harmle
   await page.locator(".language-trigger").click();
   await page.keyboard.press("Escape");
   await expect(page.locator(".language-trigger")).toBeFocused();
-  await page.locator('.global-controls button[aria-haspopup="dialog"]').click();
+  await page
+    .locator(".global-controls [data-audio-control].control-trigger")
+    .click();
   await expect(page.getByRole("status")).toHaveText(
     "Sound unavailable on this device",
   );

@@ -1,4 +1,4 @@
-# Multilingual UI, audio and admin CLI: validation
+# Multilingual UI, audio, immersive aquarium and admin CLI: validation
 
 Validated on 16 October 2026 (Asia/Bangkok), using Node 24.19.0, Chromium 154 on Linux and a disposable local PostgreSQL 17.11 instance. No production database was connected, no real TaYuak account was modified, and nothing was deployed.
 
@@ -6,12 +6,12 @@ Validated on 16 October 2026 (Asia/Bangkok), using Node 24.19.0, Chromium 154 on
 
 | Command/check                               | Result                                                                                                                                                                                  |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TEST_DATABASE_URL=… npm test`              | **52 passed**, 0 failures, 0 skips                                                                                                                                                      |
-| `npm test` without test PostgreSQL          | **43 passed**, 0 failures, **9 explicit skips** (8 existing PostgreSQL-only cases + the actual admin subprocess integration)                                                            |
+| `TEST_DATABASE_URL=… npm test`              | **54 passed**, 0 failures, 0 skips                                                                                                                                                      |
+| `npm test` without test PostgreSQL          | **45 passed**, 0 failures, **9 explicit skips** (8 existing PostgreSQL-only cases + the actual admin subprocess integration)                                                            |
 | `TEST_DATABASE_URL=… npm run test:postgres` | **41 passed**, 0 failures/skips, including the admin cases                                                                                                                              |
-| `npm run build`                             | Passed; frontend JS approximately **429 kB raw / 129 kB gzip**, includes all five dictionaries and synthesis; no audio downloads                                                        |
+| `npm run build`                             | Passed; frontend JS approximately **437 kB raw / 131 kB gzip**, includes all five dictionaries and synthesis; no audio downloads                                                        |
 | `npm run test:e2e`                          | **3 passed**: existing full journey/breeding/offline, multi-account trade/auction, maintenance                                                                                          |
-| `TEST_DATABASE_URL=… npm run test:pages`    | **5 passed**: five-language navigation/responsiveness; real AudioContext preferences/offline; keyboard/fallback; original Pages journey; committed-response-loss idempotency regression |
+| `TEST_DATABASE_URL=… npm run test:pages`    | **9 passed**: five-language navigation/responsiveness; real AudioContext preferences/offline; keyboard/fallback; four immersive/background journeys; original Pages journey; committed-response-loss idempotency regression |
 | Docker production image build               | Passed with normal Dockerfile and verified build CA trust                                                                                                                               |
 | Docker smoke and actual container restart   | Passed health/HTML/registration/gacha and persistence of session, wallet, fish and DNA; admin CLI present in runtime image                                                              |
 | Windows ZIP packaging on Linux              | Passed; native Windows execution remains a separate CI/device result                                                                                                                    |
@@ -22,7 +22,7 @@ The first Docker smoke attempt raced initial startup; after the backend reported
 
 ## Coverage
 
-**Localization:** 398 matching keys in each of five dictionaries; interpolation tokens and plural forms; missing-key detection; default Thai; Intl number/date formatting; localized historical errors/reasons; AST check against hardcoded visible JSX/attributes (excluding the product brand). Browser checks traverse all 12 pages in each language, preserve usernames and search state, reload persisted preferences and check 1440/768/390-pixel layouts. Menu bounds are checked, including the corrected mobile dropdown alignment. Long desktop navigation labels remain reachable by scrolling.
+**Localization:** 405 matching keys in each of five dictionaries; interpolation tokens and plural forms; missing-key detection; default Thai; Intl number/date formatting; localized historical errors/reasons; AST check against hardcoded visible JSX/attributes (excluding the product brand). Browser checks traverse all 12 pages in each language, preserve usernames and search state, reload persisted preferences and check 1440/768/390-pixel layouts. Menu bounds are checked, including the corrected mobile dropdown alignment. Long desktop navigation labels remain reachable by scrolling.
 
 **Audio:** no AudioContext before enabling; opening the panel does not start audio; actual browser context runs after the enable gesture. Master/music/ambient/effects controls, toggles, mute/unmute, saved preferences, refresh without autoplay, offline enable and reconnect preserve a single context. A dispatched visibility event with a hidden-document fixture verifies actual context suspension/resumption. Unit fakes check source/timer cleanup, preference validation and unavailable API/storage handling. There are no external samples or recordings; [provenance and architecture](LANGUAGES_AUDIO_ADMIN.md#original-audio-and-provenance) document the original synthesis.
 
@@ -37,6 +37,8 @@ Screenshots were visually inspected for Thai glyphs, preserved ocean styling, re
 - [Thai aquarium desktop](features/thai-desktop.png)
 - [Thai mobile language menu](features/thai-mobile.png)
 - [Sound controls](features/sound-controls.png)
+- [Aquarium background](features/aquarium-background.png)
+- [Immersive mobile aquarium](features/immersive-mobile.png)
 
 They use synthetic test accounts with default balance, not the real TaYuak account. Existing `docs/aquarium-*.png` files were restored rather than replaced.
 
@@ -58,3 +60,13 @@ They use synthetic test accounts with default balance, not the real TaYuak accou
 - Documentation: `README.md`, new `docs/LANGUAGES_AUDIO_ADMIN.md`, this report and the three new screenshots in `docs/features/`.
 
 No database schema migration, default currency change, new public admin API, paid service or secret is introduced.
+
+## Immersive aquarium extension
+
+Added the same-branch fullscreen/background controls and persistent shared renderer described in [IMMERSIVE_AQUARIUM.md](IMMERSIVE_AQUARIUM.md). Additional files: `frontend/src/display.js`, `AquariumStage.jsx`, `DisplayControls.jsx`, `tests/display.test.js` and `tests/pages/immersive.spec.js`; adjusted existing renderer, UI, styles, global controls, five dictionaries and test selectors. No backend or environment variables changed.
+
+Initial browser checks caught focus restoration during inert cleanup and hidden duplicated page content; both were corrected before repeating the tests. One legacy E2E run used the pre-fix build and was rerun after rebuilding. The heartbeat/maintenance test fixture was corrected to match the API’s direct state response.
+
+The extension reran the full PostgreSQL unit/integration suite (54), focused database suite (41), existing game E2E (3), Pages suite (9), production build and dependency audit. Docker image/restart and Windows packaging rows above record the earlier localization/audio stage of this same PR; they were not repeated for the display-only extension.
+
+The maintenance display fixture intercepts both state refreshes and heartbeat responses; an initial state-only fixture could race a live heartbeat and clear its simulated maintenance flag. Actual server maintenance restrictions are covered by the existing game E2E and backend suites.

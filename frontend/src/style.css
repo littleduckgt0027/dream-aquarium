@@ -1656,3 +1656,157 @@ html:not([lang="en"]) .modal h2 {
   letter-spacing: -0.4px;
   line-height: 1.35;
 }
+/* One persistent player canvas: inline, immersive, or behind the UI. */
+.app {
+  isolation: isolate;
+}
+.aquarium-page {
+  display: contents;
+}
+.aquarium-page.inactive > * {
+  display: none;
+}
+.aquarium-page.preview > .tank-view {
+  display: block;
+  height: 280px;
+}
+.aquarium-stage {
+  width: 100%;
+  height: 100%;
+}
+.aquarium-stage > canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.aquarium-stage.background {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: -1;
+  pointer-events: none;
+}
+.has-aquarium-background .aquarium-page.inactive > .tank-view,
+.has-immersive-aquarium .aquarium-page.inactive > .tank-view {
+  display: block;
+  position: static;
+  height: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+}
+.aquarium-page.inactive .tank-view > :not(.aquarium-stage) {
+  display: none;
+}
+.has-aquarium-background .sidebar,
+.has-aquarium-background header {
+  background: #081d25e8;
+}
+.has-aquarium-background .panel,
+.has-aquarium-background .fish-card,
+.has-aquarium-background .toolbar,
+.has-aquarium-background .stats-row > div,
+.has-aquarium-background .discover-banner,
+.has-aquarium-background .limited-hero,
+.has-aquarium-background .gacha-hero {
+  background: #0a242de6;
+}
+.has-aquarium-background .content {
+  background: #05171d42;
+}
+.aquarium-stage.immersive {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 1000;
+  background: #03242f;
+  border-radius: 0;
+  pointer-events: auto;
+}
+.aquarium-stage:fullscreen {
+  width: 100%;
+  height: 100%;
+}
+.has-immersive-aquarium .sidebar,
+.has-immersive-aquarium .workspace > header,
+.has-immersive-aquarium .content > :not(.aquarium-page),
+.has-immersive-aquarium .aquarium-page > :not(.tank-view),
+.has-immersive-aquarium .tank-view > :not(.aquarium-stage) {
+  visibility: hidden;
+}
+.immersive-toolbar {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  top: max(18px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #a7e6c530;
+  border-radius: 14px;
+  background: #061d27d9;
+  transition: opacity 0.7s ease;
+  z-index: 2;
+}
+.immersive-toolbar.idle {
+  opacity: 0;
+  pointer-events: none;
+}
+.immersive-toolbar:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+.immersive-toolbar .global-controls .control-panel {
+  left: auto;
+  right: 0;
+}
+.aquarium-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.display-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.display-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.display-actions [aria-pressed="true"] {
+  color: var(--mint);
+  border-color: #a7e6c580;
+  background: #16423e;
+}
+.display-panel .display-actions {
+  flex-direction: column;
+}
+@media (max-width: 760px) {
+  .aquarium-header-actions {
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
+  .immersive-toolbar {
+    right: 10px;
+    top: max(10px, env(safe-area-inset-top));
+    gap: 6px;
+    max-width: calc(100vw - 20px);
+  }
+  .immersive-toolbar button {
+    font-size: 12px;
+    padding: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .immersive-toolbar {
+    transition: none;
+  }
+}

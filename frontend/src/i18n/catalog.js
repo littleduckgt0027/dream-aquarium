@@ -461,6 +461,15 @@ export const messages = {
       one: "{count} fish",
       other: "{count} fish",
     },
+    "display.fullscreen": "Fullscreen Aquarium",
+    "display.background": "Aquarium Background",
+    "display.exit": "Exit Fullscreen",
+    "display.background_off": "Turn Off Aquarium Background",
+    "display.controls": "Aquarium display",
+    "display.fullscreen_hint":
+      "Enjoy your aquarium without distractions. Escape exits.",
+    "display.background_hint":
+      "Use your living aquarium behind the game interface.",
   },
   th: {
     "ui.aquarium": "ตู้ปลา",
@@ -922,6 +931,13 @@ export const messages = {
     "counts.fish": {
       other: "ปลา {count} ตัว",
     },
+    "display.fullscreen": "ขยายตู้ปลาเต็มจอ",
+    "display.background": "ใช้ตู้ปลาเป็นพื้นหลัง",
+    "display.exit": "กลับสู่หน้าปกติ",
+    "display.background_off": "ปิดพื้นหลังตู้ปลา",
+    "display.controls": "การแสดงผลตู้ปลา",
+    "display.fullscreen_hint": "ชมตู้ปลาอย่างสงบ กด Escape เพื่อกลับ",
+    "display.background_hint": "ใช้ตู้ปลาที่มีชีวิตของคุณเป็นพื้นหลังเกม",
   },
   "zh-CN": {
     "ui.aquarium": "水族箱",
@@ -1372,6 +1388,13 @@ export const messages = {
     "counts.fish": {
       other: "{count} 条鱼",
     },
+    "display.fullscreen": "全屏水族箱",
+    "display.background": "水族箱背景",
+    "display.exit": "退出全屏",
+    "display.background_off": "关闭水族箱背景",
+    "display.controls": "水族箱显示",
+    "display.fullscreen_hint": "静静欣赏水族箱，按 Escape 退出。",
+    "display.background_hint": "将你的鲜活水族箱设为游戏背景。",
   },
   ja: {
     "ui.aquarium": "水槽",
@@ -1831,6 +1854,13 @@ export const messages = {
     "counts.fish": {
       other: "魚{count}匹",
     },
+    "display.fullscreen": "水槽を全画面表示",
+    "display.background": "水槽を背景にする",
+    "display.exit": "全画面を終了",
+    "display.background_off": "水槽の背景をオフ",
+    "display.controls": "水槽の表示",
+    "display.fullscreen_hint": "水槽を静かに楽しめます。Escapeで終了。",
+    "display.background_hint": "自分の生きた水槽をゲームの背景にします。",
   },
   ko: {
     "ui.aquarium": "수족관",
@@ -2294,6 +2324,14 @@ export const messages = {
     "counts.fish": {
       other: "물고기 {count}마리",
     },
+    "display.fullscreen": "수족관 전체 화면",
+    "display.background": "수족관 배경",
+    "display.exit": "전체 화면 종료",
+    "display.background_off": "수족관 배경 끄기",
+    "display.controls": "수족관 표시",
+    "display.fullscreen_hint":
+      "방해 없이 수족관을 감상하세요. Escape로 종료합니다.",
+    "display.background_hint": "내 수족관을 게임 화면의 배경으로 사용합니다.",
   },
 };
 export const sourceKeys = {
