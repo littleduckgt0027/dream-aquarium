@@ -1810,3 +1810,199 @@ html:not([lang="en"]) .modal h2 {
     transition: none;
   }
 }
+/* Collectible artwork and inventory pages use bounded server pages. */
+.item-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+.item-card {
+  background: #0a242deb;
+  border: 1px solid var(--rarity);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.item-card canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 220/120;
+  background: #041e2980;
+  border-radius: 9px;
+}
+.item-card small {
+  color: var(--rarity);
+}
+.item-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.item-actions button {
+  padding: 8px;
+}
+.item-actions select {
+  max-width: 100%;
+}
+.odds {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.odds h2 {
+  width: 100%;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tabs .active {
+  border-color: var(--mint);
+  background: #194c4f;
+}
+.result-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+.ticket-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+}
+.expansion table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.expansion th,
+.expansion td {
+  padding: 8px;
+  text-align: start;
+  border-bottom: 1px solid #ffffff18;
+}
+.placement-handle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px dashed var(--mint);
+  border-radius: 50%;
+  background: #052b3bbf;
+  color: #dffff5;
+  padding: 10px;
+  touch-action: none;
+  z-index: 3;
+}
+.aquarium-stage.inline {
+  position: relative;
+}
+.placement-editor label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 14px 0;
+}
+.placement-editor input {
+  flex: 1;
+}
+.reveal {
+  animation: item-reveal 0.45s ease-out;
+}
+@keyframes item-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 500px) {
+  .item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .item-card {
+    padding: 8px;
+  }
+  .item-card button {
+    font-size: 11px;
+  }
+  .expansion table {
+    font-size: 11px;
+  }
+  .expansion td,
+  .expansion th {
+    padding: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    animation: none;
+  }
+}
+.tier-selection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0;
+}
+.tier-selection label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.recycling-all .modal {
+  max-height: 90dvh;
+  overflow: auto;
+}
+.recycling-all table,
+.fish-inventory table {
+  width: 100%;
+  text-align: start;
+}
+.recycling-all th,
+.recycling-all td,
+.fish-inventory th,
+.fish-inventory td {
+  padding: 6px;
+  border-bottom: 1px solid #ffffff15;
+}
+.fish-inventory .fish-grid > button {
+  align-self: start;
+}
+.stack-inventory .item-card input {
+  max-width: 100%;
+}
+.fish-inventory-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.fish-inventory-entry > .fish-card {
+  flex: 1;
+}
+.fish-inventory-entry > button {
+  align-self: flex-start;
+}
+.fish-picker {
+  min-width: 0;
+}
+.fish-picker input,
+.fish-picker select {
+  max-width: 100%;
+}
+.fish-picker .pagination {
+  margin: 8px 0;
+  font-size: 11px;
+}
+.fish-picker .pagination button {
+  padding: 6px;
+}

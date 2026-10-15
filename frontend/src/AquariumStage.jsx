@@ -6,25 +6,19 @@ import {
   useDisplay,
   registerDisplay,
   exitAquarium,
-  nativeFullscreenEnded,
+  nativeFullscreenChanged,
 } from "./display.js";
 export default function AquariumStage(props) {
   useI18n();
+  const [drag, setDrag] = useState(null);
   const mode = useDisplay(),
     ref = useRef(null),
     [idle, setIdle] = useState(false);
   useEffect(() => registerDisplay(ref.current), []);
   useEffect(() => {
-    let native = false;
-    const changed = () => {
-      if (document.fullscreenElement === ref.current) native = true;
-      else if (native) {
-        native = false;
-        nativeFullscreenEnded();
-      }
-    };
-    document.addEventListener("fullscreenchange", changed);
-    return () => document.removeEventListener("fullscreenchange", changed);
+    document.addEventListener("fullscreenchange", nativeFullscreenChanged);
+    return () =>
+      document.removeEventListener("fullscreenchange", nativeFullscreenChanged);
   }, []);
   useEffect(() => {
     if (!mode.immersive) return;
@@ -92,9 +86,70 @@ export default function AquariumStage(props) {
     >
       <Aquarium
         {...props}
+        cosmetics={
+          drag
+            ? {
+                ...props.cosmetics,
+                placements: props.cosmetics.placements.map((i) =>
+                  i.id === drag.id ? { ...i, ...drag } : i,
+                ),
+              }
+            : props.cosmetics
+        }
         background={mode.background && !mode.immersive}
         onSelect={mode.immersive || mode.background ? () => {} : props.onSelect}
       />
+      {props.editing &&
+        !mode.immersive &&
+        !mode.background &&
+        props.cosmetics?.placements.map((item) => (
+          <button
+            key={item.id}
+            className="placement-handle"
+            aria-label={t("exp.edit")}
+            style={{
+              left: `${(drag?.id === item.id ? drag.x : item.x) * 100}%`,
+              top: `${(drag?.id === item.id ? drag.y : item.y) * 100}%`,
+            }}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              setDrag({ ...item });
+              props.onChoosePlacement?.(item.id);
+            }}
+            onPointerMove={(e) => {
+              if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+              const r = ref.current.getBoundingClientRect();
+              setDrag({
+                ...item,
+                x: Math.max(
+                  0.03,
+                  Math.min(0.97, (e.clientX - r.left) / r.width),
+                ),
+                y: Math.max(
+                  0.1,
+                  Math.min(0.97, (e.clientY - r.top) / r.height),
+                ),
+              });
+            }}
+            onPointerUp={(e) => {
+              if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+              e.currentTarget.releasePointerCapture(e.pointerId);
+              if (drag)
+                props.onPlace?.({
+                  id: item.id,
+                  x: drag.x,
+                  y: drag.y,
+                  rotation: item.rotation,
+                  scale: item.scale,
+                });
+              setDrag(null);
+            }}
+            onPointerCancel={() => setDrag(null)}
+          >
+            ✥
+          </button>
+        ))}
       {mode.immersive && (
         <div
           className={`immersive-toolbar ${idle ? "idle" : ""}`}

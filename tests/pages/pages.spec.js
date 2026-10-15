@@ -38,7 +38,7 @@ test("Pages subpath, remote API without third-party cookies, reload, offline and
   await expect(page.getByText("2,900", { exact: true })).toBeVisible();
   await page
     .locator("nav")
-    .getByRole("button", { name: "Aquarium", exact: false })
+    .getByRole("button", { name: "Aquarium", exact: true })
     .click();
   for (const width of [1440, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });

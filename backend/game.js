@@ -1,3 +1,10 @@
+import { openFishTickets } from "./fish-tickets.js";
+import { stacksAction } from "./stacks.js";
+import { bulkRecycling } from "./bulk-recycling.js";
+import { fishBulkAction } from "./fish-bulk.js";
+import { readPlayer, writePlayer, storageCount } from "./fish-store.js";
+import { FISH_STORAGE_MAX } from "../shared/collectibles.js";
+import { collectibleAction, scene, detachAccessories } from "./collectibles.js";
 import { transaction } from "./db.js";
 import { addStack, consume } from "./inventory.js";
 import { randomUUID, randomInt } from "node:crypto";
@@ -63,14 +70,12 @@ export function initialState(now = Date.now()) {
     created: now,
   };
 }
-export async function load(db, id) {
-  const r = await db.prepare("SELECT state FROM users WHERE id=?").get(id);
-  requireThat(r, "Player not found");
-  return JSON.parse(r.state);
+export async function load(db, id, options) {
+  return readPlayer(db, id, options);
 }
 export async function save(db, id, s) {
   return transaction(db, async () => {
-    const fish = [...s.fish, ...s.breeds.flatMap((b) => b.children)];
+    const fish = [...(s.fish || []), ...s.breeds.flatMap((b) => b.children)];
     for (let at = 0; at < fish.length; at += 250) {
       const batch = fish.slice(at, at + 250);
       await db
@@ -80,9 +85,7 @@ export async function save(db, id, s) {
         )
         .run(...batch.flatMap((f) => [f.id, JSON.stringify(f)]));
     }
-    await db
-      .prepare("UPDATE users SET state=? WHERE id=?")
-      .run(JSON.stringify(s), id);
+    await writePlayer(db, id, s);
   });
 }
 export function ledger(s, delta, reason, now) {
@@ -119,7 +122,7 @@ function reward(s, kind, value, now, selection = false) {
 }
 function room(s, n = 1) {
   requireThat(
-    s.fish.filter((f) => f.location === "storage").length + n <= s.storage,
+    storageCount(s) + n <= s.storage,
     "Storage full. Upgrade storage or free a slot. Inbox deliveries never expire.",
   );
 }
@@ -137,7 +140,7 @@ export async function settle(db, now = Date.now()) {
     for (const l of rows) {
       if (l.bidder) await completeSale(db, l, l.bidder, l.bid, now, true);
       else {
-        const seller = await load(db, l.seller);
+        const seller = await load(db, l.seller, { ids: [] });
         delivery(seller, JSON.parse(l.fish), "Expired auction", now);
         await save(db, l.seller, seller);
         await db
@@ -152,8 +155,8 @@ export async function settle(db, now = Date.now()) {
 async function completeSale(db, l, buyer, price, now, escrow = false) {
   requireThat(l.status === "open", "Listing already sold");
   requireThat(l.seller !== buyer, "Cannot buy your own fish");
-  const b = await load(db, buyer),
-    s = await load(db, l.seller);
+  const b = await load(db, buyer, { ids: [] }),
+    s = await load(db, l.seller, { ids: [] });
   if (!escrow) {
     if (l.bidder === buyer)
       ledger(b, l.bid, "Auction escrow applied to buyout", now);
@@ -174,7 +177,8 @@ async function completeSale(db, l, buyer, price, now, escrow = false) {
   b.sales.unshift(sale);
   s.sales.unshift(sale);
   if (l.bidder && !escrow && l.bidder !== buyer) {
-    const refund = l.bidder === buyer ? b : await load(db, l.bidder);
+    const refund =
+      l.bidder === buyer ? b : await load(db, l.bidder, { ids: [] });
     ledger(refund, l.bid, "Auction bid refund", now);
     if (l.bidder !== buyer) await save(db, l.bidder, refund);
   }
@@ -185,10 +189,13 @@ async function completeSale(db, l, buyer, price, now, escrow = false) {
     .run(l.id);
 }
 export async function publicState(db, id, now = Date.now()) {
-  const s = await load(db, id);
+  const s = await load(db, id, { bounded: true });
   return {
     ...s,
-    fish: s.fish.map((f) => ({ ...f, growth: growth(f, now) })),
+    items: s.items.slice(0, 240),
+    itemCount: s.items.length,
+    fish: s.fish.map((f) => ({ ...f, owned: true, growth: growth(f, now) })),
+    cosmetics: await scene(db, id),
     id,
     username: (
       await db.prepare("SELECT username FROM users WHERE id=?").get(id)
@@ -247,37 +254,51 @@ export function heartbeat(s, now) {
 }
 export async function action(db, id, type, p = {}, now = Date.now()) {
   return transaction(db, async () => {
-    let s = await load(db, id);
-    if (type === "heartbeat") {
+    let s = await load(db, id, {
+      ids: [
+        p.id,
+        p.a,
+        p.b,
+        p.fishId,
+        ...(type === "recycle" && Array.isArray(p.ids) ? p.ids : []),
+      ],
+    });
+    if (
+      (await stacksAction(db, id, type, p, s, now)) ||
+      (await bulkRecycling(db, id, type, p, s, now)) ||
+      (await fishBulkAction(db, id, type, p, s, now)) ||
+      (await collectibleAction(db, id, type, p, s, now))
+    ) {
+      // Ownership, currency and item writes share the existing economy transaction.
+    } else if (type === "heartbeat") {
       heartbeat(s, now);
     } else if (type === "move") {
       const f = owned(s, p.id);
       requireThat(["tank", "storage"].includes(p.location), "Invalid location");
       if (f.location !== p.location) {
         if (p.location === "tank")
-          requireThat(
-            s.fish.filter((f) => f.location === "tank").length < s.tank,
-            "Aquarium is full",
-          );
+          requireThat(s.fishCounts.tank < s.tank, "Aquarium is full");
         else room(s);
         f.location = p.location;
       }
     } else if (type === "release") {
       requireThat(p.confirm === true, "Confirm permanent release");
       const f = owned(s, p.id);
+      requireThat(!f.locked, "exp.selection_changed");
       requireThat(
         !s.breeds.some((b) => !b.claimed && b.parents.includes(f.id)),
         "Parent is breeding",
       );
+      await detachAccessories(db, id, [f.id]);
       s.fish = s.fish.filter((x) => x.id !== f.id);
     } else if (type === "upgrade") {
       if (p.kind === "tank") {
         ledger(s, -s.tank * 100, "Aquarium expansion", now);
         s.tank += 6;
       } else if (p.kind === "storage") {
-        requireThat(s.storage < 10000, "Maximum storage reached");
+        requireThat(s.storage < FISH_STORAGE_MAX, "Maximum storage reached");
         ledger(s, -Math.floor(s.storage * 2), "Storage expansion", now);
-        s.storage = Math.min(10000, s.storage + 120);
+        s.storage = Math.min(FISH_STORAGE_MAX, s.storage + 120);
       } else {
         requireThat(
           p.kind === "market" && s.marketLevel < 9,
@@ -309,6 +330,10 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
       const result = Array.from({ length: p.count }, () => fish({ now }));
       s.fish.push(...result);
       s.lastRoll = result.map((f) => f.id);
+      s.lastRollPreview = result
+        .slice(0, 100)
+        .map((f) => ({ ...f, owned: true, growth: 0 }));
+      s.lastRollCount = result.length;
     } else if (type === "breed") {
       requireThat(p.a !== p.b, "Choose two different parents");
       const a = owned(s, p.a),
@@ -352,7 +377,7 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
       );
       const fs = p.ids.map((id) => owned(s, id));
       requireThat(
-        fs.every((f) => f.rarity === fs[0].rarity && !f.limited),
+        fs.every((f) => f.rarity === fs[0].rarity && !f.limited && !f.locked),
         "Select 10 non-limited fish of the same rarity",
       );
       requireThat(
@@ -361,6 +386,7 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
         ),
         "Breeding parents cannot be recycled",
       );
+      await detachAccessories(db, id, p.ids);
       s.fish = s.fish.filter((f) => !p.ids.includes(f.id));
       s.items.push({
         id: randomUUID(),
@@ -374,6 +400,14 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
         Number.isInteger(p.count) && p.count > 0 && p.count <= 9999,
         "Choose 1–9999 food",
       );
+      requireThat(
+        s.items
+          .filter((i) => i.type === "food")
+          .reduce((n, i) => n + i.count, 0) +
+          p.count <=
+          50000,
+        "exp.food_capacity",
+      );
       ledger(s, -p.count * 20, "Fish food", now);
       addStack(s.items, "food", p.count);
     } else if (type === "feed") {
@@ -384,31 +418,10 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
       s.items = consume(s.items, item.id);
       f.boost = (f.boost || 0) + 3600000;
     } else if (type === "ticket") {
-      const t = s.items.find((t) => t.id === p.id && t.type === "ticket");
-      requireThat(t, "Ticket missing");
-      room(s);
-      let f;
-      if (rand() * 100 < LIMITED[t.rarity]) {
-        const history = historicalMonths(now);
-        const limited = history.length
-          ? history[randomInt(history.length)]
-          : monthKey(now);
-        f = fish({ tier: t.rarity, limited, now });
-        const variant = rand() < 0.5 ? "sunrise" : "moonlight";
-        f.dna.hue = variant === "sunrise" ? 35 : 210;
-        s.collection.push({
-          fishId: f.id,
-          month: limited,
-          rarity: f.rarity,
-          variant,
-        });
-      } else {
-        f = fish({ tier: rarity(t.rarity), now });
-      }
-      s.fish.push(f);
-      s.items = s.items.filter((i) => i.id !== p.id);
+      openFishTickets(s, p.id, p.count === undefined ? 1 : p.count, now);
     } else if (type === "list") {
       const f = owned(s, p.id);
+      requireThat(!f.locked, "exp.selection_changed");
       requireThat(
         !s.breeds.some((j) => !j.claimed && j.parents.includes(f.id)),
         "Fish is breeding",
@@ -454,6 +467,7 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
           p.buyout || null,
           p.type === "auction" ? now + p.hours * 3600000 : null,
         );
+      await detachAccessories(db, id, [f.id]);
       s.fish = s.fish.filter((x) => x.id !== f.id);
     } else if (type === "cancel") {
       const l = await db.prepare("SELECT * FROM listings WHERE id=?").get(p.id);
@@ -482,7 +496,7 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
           l.type === "fixed" ? l.price : l.buyout,
           now,
         );
-        s = await load(db, id);
+        s = await load(db, id, { ids: [] });
       } else {
         requireThat(l.type === "auction" && l.end_at > now, "Auction ended");
         amount(p.amount);
@@ -493,7 +507,7 @@ export async function action(db, id, type, p = {}, now = Date.now()) {
           ledger(s, l.bid, "Existing bid escrow reapplied", now);
         ledger(s, -p.amount, "Auction escrow", now);
         if (l.bidder && l.bidder !== id) {
-          const old = await load(db, l.bidder);
+          const old = await load(db, l.bidder, { ids: [] });
           ledger(old, l.bid, "Outbid refund", now);
           await save(db, l.bidder, old);
         }

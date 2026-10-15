@@ -47,12 +47,15 @@ test("real keeper journey, fish management, breeding, gacha, navigation and offl
     .getByRole("button", { name: "Breeding", exact: false })
     .first()
     .click();
+  await expect(
+    page.getByLabel("Parent 1", { exact: true }).locator("option"),
+  ).not.toHaveCount(1);
   const opts = await page
-    .getByLabel("Parent 1")
+    .getByLabel("Parent 1", { exact: true })
     .locator("option")
     .evaluateAll((a) => a.map((x) => x.value));
-  await page.getByLabel("Parent 1").selectOption(opts[1]);
-  await page.getByLabel("Parent 2").selectOption(opts[2]);
+  await page.getByLabel("Parent 1", { exact: true }).selectOption(opts[1]);
+  await page.getByLabel("Parent 2", { exact: true }).selectOption(opts[2]);
   await page.getByRole("button", { name: "Begin breeding · 200 ◈" }).click();
   await expect(page.getByText(/Incubating/)).toBeVisible();
   await page
@@ -99,7 +102,7 @@ test("real keeper journey, fish management, breeding, gacha, navigation and offl
   }
   await page
     .locator("nav")
-    .getByRole("button", { name: "Aquarium", exact: false })
+    .getByRole("button", { name: "Aquarium", exact: true })
     .click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "docs/aquarium-mobile.png", fullPage: true });
@@ -225,7 +228,7 @@ test("operator maintenance is visible and blocks purchases until resumed", async
 }) => {
   const { openDB } = await import("../../backend/db.js");
   const { setMaintenance } = await import("../../backend/game.js");
-  const db = await openDB("/tmp/dream-e2e.sqlite");
+  const db = await openDB(process.env.E2E_DB_PATH || "/tmp/dream-e2e.sqlite");
   try {
     await page.goto("/");
     await page
