@@ -24,6 +24,7 @@
     "vite": "^7.1.0"
   },
   "devDependencies": {
+    "@babel/parser": "^8.0.7",
     "@playwright/test": "^1.55.0",
     "prettier": "^3.9.10",
     "yazl": "^3.3.1"

@@ -1,4 +1,8 @@
 import { test, expect } from "@playwright/test";
+// Legacy journeys assert the English locale explicitly; new locale tests cover Thai default.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("dreamLanguage", "en"));
+});
 test("Pages subpath, remote API without third-party cookies, reload, offline and resync", async ({
   page,
   context,

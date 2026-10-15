@@ -1,3 +1,4 @@
+import { t, useI18n } from "./i18n/index.js";
 import React, { useEffect, useRef } from "react";
 import { COLORS } from "../../shared/rules.js";
 export function drawFish(c, f, x, y, size = 55, dir = 1, time = 0) {
@@ -149,7 +150,7 @@ export function FishIcon({ fish }) {
       width="160"
       height="90"
       className="fish-icon"
-      aria-label={`${fish.name} procedural fish`}
+      aria-label={t("ui.value0_procedural_fish", { p0: fish.name })}
     />
   );
 }
@@ -160,10 +161,23 @@ export default function Aquarium({
   onSelect,
   quality = "high",
 }) {
+  useI18n();
   const ref = useRef(),
     world = useRef([]),
-    latest = useRef({ fish, onSelect, theme, decor, quality });
-  latest.current = { fish, onSelect, theme, decor, quality };
+    latest = useRef({
+      fish,
+      onSelect,
+      theme,
+      decor,
+      quality,
+    });
+  latest.current = {
+    fish,
+    onSelect,
+    theme,
+    decor,
+    quality,
+  };
   useEffect(() => {
     const canvas = ref.current,
       c = canvas.getContext("2d");
@@ -322,7 +336,7 @@ export default function Aquarium({
     <canvas
       ref={ref}
       className="aquarium-canvas"
-      aria-label="Living aquarium with swimming procedural fish"
+      aria-label={t("ui.living_aquarium_with_swimming_procedural_fish")}
     />
   );
 }
