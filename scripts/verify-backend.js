@@ -15,11 +15,34 @@ if (
   throw Error(
     "API_URL must be an HTTPS origin without credentials, path or query.",
   );
-const r = await fetch(new URL("/api/health", url), {
-  signal: AbortSignal.timeout(15000),
-});
-if (!r.ok) throw Error("Backend health request failed: " + r.status);
-const h = await r.json();
-if (h.application !== "dream-aquarium" || h.database !== "ready")
-  throw Error("Expected a real Dream Aquarium database-backed server");
-console.log("Backend health verified.");
+// Render Free can take over a minute to wake. Retry read-only health checks only.
+let healthy = false;
+for (let attempt = 0; attempt < 10; attempt++) {
+  try {
+    const r = await fetch(new URL("/api/health", url), {
+      signal: AbortSignal.timeout(20000),
+      headers: { Origin: "https://littleduckgt0027.github.io" },
+    });
+    const h = await r.json();
+    if (
+      r.ok &&
+      h.status === "ok" &&
+      h.application === "dream-aquarium" &&
+      h.database === "ready" &&
+      h.databaseEngine === "postgresql" &&
+      r.headers.get("access-control-allow-origin") ===
+        "https://littleduckgt0027.github.io"
+    ) {
+      healthy = true;
+      break;
+    }
+  } catch {
+    /* cold start / transient outage */
+  }
+  if (attempt < 9) await new Promise((r) => setTimeout(r, 3000));
+}
+if (!healthy)
+  throw Error(
+    "Backend PostgreSQL readiness/CORS check failed; Pages publication blocked",
+  );
+console.log("Backend PostgreSQL health and Pages CORS verified.");

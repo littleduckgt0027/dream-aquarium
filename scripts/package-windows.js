@@ -32,7 +32,9 @@ for (const f of [...files].sort()) {
     /(^|\/)(node_modules|data|\.git|artifacts|test-results|playwright-report)(\/|$)/.test(
       f,
     ) ||
-    /(^|\/)\.env$|\.sqlite(?:-wal|-shm)?$|\.pem$|\.key$/i.test(f)
+    /(^|\/)\.env(?:\.(?!example$)[^/]*)?$|\.sqlite(?:-wal|-shm)?$|\.dump$|\.pem$|\.key$/i.test(
+      f,
+    )
   )
     throw Error("Refusing to package private/generated path: " + f);
   zip.addFile(join(root, f), "dream-aquarium/" + f);

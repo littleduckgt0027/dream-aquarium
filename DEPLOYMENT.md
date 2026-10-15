@@ -1,5 +1,9 @@
 # Deployment and operations
 
+## Current online deployment
+
+Use [Neon PostgreSQL + Render Free + GitHub Pages](docs/NEON_RENDER.md). It supersedes older paid Render/persistent-disk instructions. The following sections describe local SQLite installations and historical validation only. Online production uses DATABASE_URL, has no Render disk, and fails startup without its database configuration.
+
 No public deployment is provisioned and no public URL is claimed. All tested URLs in logs are internal validation only. The owner must provide/authorize a target hosting account or server before an external deployment can be completed; do not invent a URL, purchase hosting, or publish credentials.
 
 ## One machine / private play
@@ -35,7 +39,7 @@ Safest manual method: stop the game, copy the **entire data directory** to a pro
 
 - Hosting account/domain/TLS and durable volume authorization; actual external deployment and HTTPS validation remain undone.
 - Automated backups/restore drills, monitoring, abuse controls, signup verification and load testing are not supplied as a managed service.
-- SQLite single-instance architecture is tested; horizontal replication, PostgreSQL, multi-region operation and large-scale economy abuse resistance are not claimed.
+- Local SQLite is still supported; horizontal replication, multi-region operation and large-scale economy abuse resistance are not claimed.
 - PWA shell works in Chromium on localhost/HTTPS; App Store packaging, Safari device tests and cross-device install behavior remain unverified.
 - Windows launcher is provided; it has not been exercised on a Windows runner.
 - Inventory includes unique recycling tickets and food stacks capped at 999, covered by transaction tests.
@@ -55,4 +59,4 @@ The validation container uses COOKIE_SECURE=false for local HTTP smoke checks. `
 
 ## Repair release: launcher, split-origin Pages and verified backup
 
-The updated root START-GAME.bat/STOP-GAME.bat replace the old foreground-only launcher. See WINDOWS-INSTRUCTIONS.md. GitHub Pages/API configuration, tab-scoped sessions, workflow settings, current API access blocker and non-free Render option are detailed in docs/ONLINE_SETUP.md. Online SQLite backup and restore-to-new-file are now implemented in scripts/backup.js and tested; offsite managed backups remain unconfigured. Older notes about backup tools being entirely unimplemented are superseded by this section.
+The updated root START-GAME.bat/STOP-GAME.bat replace the old foreground-only launcher. See WINDOWS-INSTRUCTIONS.md. GitHub Pages/API configuration, tab-scoped sessions, workflow settings, current API access blocker and Render Free + Neon instructions are detailed in docs/ONLINE_SETUP.md. Online SQLite backup and restore-to-new-file are now implemented in scripts/backup.js and tested; offsite managed backups remain unconfigured. Older notes about backup tools being entirely unimplemented are superseded by this section.

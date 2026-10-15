@@ -1,7 +1,7 @@
 # Database
 
-Executable migration source: backend/db.js. `npm run db:migrate` applies `CREATE TABLE IF NOT EXISTS` migration v1 and PRAGMA user_version=1. WAL + foreign keys + busy timeout. Future incompatible migrations must explicitly upgrade versioned data rather than silently replacing state. Never run tests against a player's DB.
+Online production uses Neon PostgreSQL through `DATABASE_URL`. Startup applies versioned transactional migrations in `migrations/`; schema creation never drops existing player tables. `schema_migrations` records applied versions. Do not edit an applied migration; add a new version and register it in `backend/db.js`.
 
-Tables: users (hashed credentials, serialized authoritative player state), sessions (hashed cookie tokens + expiry), listings (fish escrow, currency bid escrow, lifecycle), requests (user-scoped idempotency), audit (server gameplay actions), lineage (permanent DNA/ancestry archive), meta (persistent maintenance start timestamp).
+All original entities are retained: player documents (fish/DNA/tank/wallet/inventory/breeding/rewards/deliveries/history), sessions, listings/escrow, request keys, lineage, audit and maintenance metadata. Money remains an integer; timestamps are BIGINT milliseconds. PostgreSQL query results reject integers outside JavaScript's safe range.
 
-Only the server writes balances/ownership. `BEGIN IMMEDIATE` encloses economy and cross-user mutations. JSON player documents simplify the initial local deployment, but limit horizontal scale and incremental state fetch. Do not share this SQLite database across independently replicated writers or network filesystems. PostgreSQL migration and normalized high-volume tables are future scaling work, not claimed as delivered here.
+SQLite WAL remains supported for the local desktop launcher, explicit local DB_PATH and legacy backup/import. See [Neon/Render operations](../docs/NEON_RENDER.md) for non-destructive import, deployment, backups and test commands. No live credentials or player database belongs in Git.

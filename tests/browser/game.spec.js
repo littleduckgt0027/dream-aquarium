@@ -217,7 +217,7 @@ test("operator maintenance is visible and blocks purchases until resumed", async
 }) => {
   const { openDB } = await import("../../backend/db.js");
   const { setMaintenance } = await import("../../backend/game.js");
-  const db = openDB("/tmp/dream-e2e.sqlite");
+  const db = await openDB("/tmp/dream-e2e.sqlite");
   try {
     await page.goto("/");
     await page
@@ -230,7 +230,7 @@ test("operator maintenance is visible and blocks purchases until resumed", async
     await page
       .getByRole("button", { name: "I have saved my recovery code" })
       .click();
-    setMaintenance(db, true);
+    await setMaintenance(db, true);
     await page
       .locator("nav")
       .getByRole("button", { name: "Settings", exact: false })
@@ -248,13 +248,13 @@ test("operator maintenance is visible and blocks purchases until resumed", async
     await expect(
       page.getByRole("button", { name: "Discover ×1 · 100 ◈", exact: true }),
     ).toBeDisabled();
-    setMaintenance(db, false);
+    await setMaintenance(db, false);
     await page.getByRole("button", { name: "Reconnect", exact: true }).click();
     await expect(
       page.getByRole("button", { name: "Discover ×1 · 100 ◈", exact: true }),
     ).toBeEnabled();
   } finally {
-    setMaintenance(db, false);
-    db.close();
+    await setMaintenance(db, false);
+    await db.close();
   }
 });
