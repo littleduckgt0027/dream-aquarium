@@ -2,6 +2,8 @@
 
 Online backend: **Neon PostgreSQL + Render Free**, frontend: **GitHub Pages**. See [setup, environment variables and safe SQLite import](docs/NEON_RENDER.md). Older SQLite deployment notes apply to local desktop use only. No production deployment or data import is performed by this change.
 
+New: [five languages, original ambient sound and the separately confirmed TaYuak admin CLI](docs/LANGUAGES_AUDIO_ADMIN.md). Thai is the default; language/audio controls are in the global top bar.
+
 เกมตู้ปลาออนไลน์แบบ full-stack: เลี้ยงปลาที่มี DNA เฉพาะตัว ผสมพันธุ์ สุ่มปลา ซื้อขายและประมูลด้วย Pearl พร้อมบันทึกข้อมูลในฐานข้อมูลจริง
 
 ## เปิดเล่นบนเครื่องตัวเองแบบง่าย
@@ -75,3 +77,7 @@ The server is authoritative for balances, fish ownership, DNA, timers, auction e
 ## Online / GitHub Pages
 
 See [online setup and access blockers](docs/ONLINE_SETUP.md). Pages subpath and separate-origin authenticated API are implemented and tested locally. `.github/workflows/ci.yml` tests Ubuntu/Windows; `pages.yml` publishes only after a real HTTPS backend is configured. No public deployment is claimed. Windows package: `npm run package:windows`; output `artifacts/dream-aquarium-windows.zip`.
+
+### Immersive aquarium display
+
+Use Fullscreen Aquarium or Aquarium Background in the Aquarium header, or the layers control in the top bar. Both reuse your living aquarium and remember your preference. [Display controls, accessibility and rendering](docs/IMMERSIVE_AQUARIUM.md).

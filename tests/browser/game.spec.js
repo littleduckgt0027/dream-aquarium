@@ -1,4 +1,8 @@
 import { test, expect } from "@playwright/test";
+// Legacy journeys assert the English locale explicitly; new locale tests cover Thai default.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("dreamLanguage", "en"));
+});
 test("real keeper journey, fish management, breeding, gacha, navigation and offline", async ({
   page,
   context,
@@ -132,6 +136,10 @@ test("two real accounts trade fish, claim delivery and bid through the UI", asyn
   browser,
 }) => {
   const contexts = [await browser.newContext(), await browser.newContext()];
+  for (const context of contexts)
+    await context.addInitScript(() =>
+      localStorage.setItem("dreamLanguage", "en"),
+    );
   const pages = await Promise.all(contexts.map((c) => c.newPage()));
   const names = ["seller_" + Date.now(), "buyer_" + Date.now()];
   try {

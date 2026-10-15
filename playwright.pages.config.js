@@ -2,8 +2,12 @@ import { defineConfig } from "@playwright/test";
 import { existsSync } from "node:fs";
 export default defineConfig({
   testDir: "tests/pages",
+  outputDir: "test-results/pages",
   workers: 1,
   use: {
+    actionTimeout: 10000,
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
     baseURL: "http://127.0.0.1:3201",
     launchOptions: {
       executablePath:

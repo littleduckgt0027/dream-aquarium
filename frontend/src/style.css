@@ -1429,3 +1429,384 @@ nav button + button {
   color: #95b8b2;
   font-size: 12px;
 }
+
+/* Localized top-bar controls share the original ocean palette. */
+:root {
+  font-family:
+    Inter, "Noto Sans Thai", "Leelawadee UI", "Noto Sans SC", "PingFang SC",
+    "Microsoft YaHei", "Noto Sans JP", "Hiragino Sans", "Yu Gothic",
+    "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+}
+.global-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 30;
+}
+.control-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 11px;
+  white-space: nowrap;
+}
+.control-trigger [aria-hidden]:first-child {
+  font-size: 18px;
+  color: var(--mint);
+}
+.control-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #0d2a33f7;
+  border: 1px solid #a7e6c530;
+  border-radius: 14px;
+  box-shadow: 0 16px 45px #0007;
+  backdrop-filter: blur(16px);
+  padding: 12px;
+  width: min(330px, calc(100vw - 24px));
+  max-height: 75vh;
+  overflow: auto;
+  color: #e0ece8;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.language-panel {
+  width: 205px;
+}
+.language-panel button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  margin: 2px 0;
+}
+.language-panel [aria-checked="true"] {
+  background: #a7e6c51a;
+  color: var(--mint);
+}
+.control-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.control-panel-title button {
+  padding: 5px 10px;
+}
+.volume-control {
+  display: block;
+  margin-top: 14px;
+}
+.volume-control > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.volume-control input {
+  width: 100%;
+  accent-color: var(--mint);
+  padding: 0;
+  margin: 7px 0;
+}
+.audio-toggle {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 6px 0;
+}
+.audio-toggle input {
+  accent-color: var(--mint);
+}
+.sound-panel p {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.auth-controls {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 40;
+}
+.auth {
+  position: relative;
+}
+.auth-form {
+  padding-top: 85px;
+}
+.top-right {
+  flex-wrap: wrap;
+}
+button,
+option,
+label,
+h1,
+h2,
+h3,
+p,
+.breadcrumb {
+  overflow-wrap: anywhere;
+}
+nav button {
+  white-space: normal;
+}
+.control-panel button {
+  overflow-wrap: normal;
+}
+@media (max-width: 900px) {
+  header {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 78px;
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .top-right {
+    margin-left: auto;
+    gap: 8px;
+  }
+  .breadcrumb {
+    min-width: 0;
+  }
+}
+@media (max-width: 550px) {
+  .breadcrumb {
+    display: none;
+  }
+  .top-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .top-right .pearl {
+    font-size: 13px;
+  }
+  .language-trigger {
+    max-width: 130px;
+  }
+  .global-controls {
+    gap: 5px;
+  }
+  .control-trigger {
+    padding: 7px 9px;
+  }
+  .auth-controls {
+    right: 12px;
+    top: 12px;
+  }
+  .auth-form {
+    padding-top: 80px;
+  }
+}
+/* Long translations remain reachable even on shorter desktop windows. */
+.sidebar nav {
+  min-height: 0;
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+}
+.sidebar nav button,
+.sidebar > .brand,
+.sidebar-bottom,
+.nav-label {
+  flex-shrink: 0;
+}
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+@media (max-width: 760px) {
+  .sidebar nav {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 100%;
+    scrollbar-width: none;
+  }
+  .sidebar nav button {
+    white-space: nowrap;
+  }
+  header {
+    top: 62px;
+  }
+}
+@media (max-width: 550px) {
+  .global-controls .control-panel {
+    left: 0;
+    right: auto;
+  }
+  .auth-controls .control-panel {
+    left: auto;
+    right: 0;
+  }
+}
+.audio-toggle {
+  flex-direction: row;
+  justify-content: flex-start;
+}
+html:not([lang="en"]) h1,
+html:not([lang="en"]) .modal h2 {
+  font-family: inherit;
+  letter-spacing: -0.4px;
+  line-height: 1.35;
+}
+/* One persistent player canvas: inline, immersive, or behind the UI. */
+.app {
+  isolation: isolate;
+}
+.aquarium-page {
+  display: contents;
+}
+.aquarium-page.inactive > * {
+  display: none;
+}
+.aquarium-page.preview > .tank-view {
+  display: block;
+  height: 280px;
+}
+.aquarium-stage {
+  width: 100%;
+  height: 100%;
+}
+.aquarium-stage > canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.aquarium-stage.background {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: -1;
+  pointer-events: none;
+}
+.has-aquarium-background .aquarium-page.inactive > .tank-view,
+.has-immersive-aquarium .aquarium-page.inactive > .tank-view {
+  display: block;
+  position: static;
+  height: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+}
+.aquarium-page.inactive .tank-view > :not(.aquarium-stage) {
+  display: none;
+}
+.has-aquarium-background .sidebar,
+.has-aquarium-background header {
+  background: #081d25e8;
+}
+.has-aquarium-background .panel,
+.has-aquarium-background .fish-card,
+.has-aquarium-background .toolbar,
+.has-aquarium-background .stats-row > div,
+.has-aquarium-background .discover-banner,
+.has-aquarium-background .limited-hero,
+.has-aquarium-background .gacha-hero {
+  background: #0a242de6;
+}
+.has-aquarium-background .content {
+  background: #05171d42;
+}
+.aquarium-stage.immersive {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 1000;
+  background: #03242f;
+  border-radius: 0;
+  pointer-events: auto;
+}
+.aquarium-stage:fullscreen {
+  width: 100%;
+  height: 100%;
+}
+.has-immersive-aquarium .sidebar,
+.has-immersive-aquarium .workspace > header,
+.has-immersive-aquarium .content > :not(.aquarium-page),
+.has-immersive-aquarium .aquarium-page > :not(.tank-view),
+.has-immersive-aquarium .tank-view > :not(.aquarium-stage) {
+  visibility: hidden;
+}
+.immersive-toolbar {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  top: max(18px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #a7e6c530;
+  border-radius: 14px;
+  background: #061d27d9;
+  transition: opacity 0.7s ease;
+  z-index: 2;
+}
+.immersive-toolbar.idle {
+  opacity: 0;
+  pointer-events: none;
+}
+.immersive-toolbar:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
+.immersive-toolbar .global-controls .control-panel {
+  left: auto;
+  right: 0;
+}
+.aquarium-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.display-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.display-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.display-actions [aria-pressed="true"] {
+  color: var(--mint);
+  border-color: #a7e6c580;
+  background: #16423e;
+}
+.display-panel .display-actions {
+  flex-direction: column;
+}
+@media (max-width: 760px) {
+  .aquarium-header-actions {
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
+  .immersive-toolbar {
+    right: 10px;
+    top: max(10px, env(safe-area-inset-top));
+    gap: 6px;
+    max-width: calc(100vw - 20px);
+  }
+  .immersive-toolbar button {
+    font-size: 12px;
+    padding: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .immersive-toolbar {
+    transition: none;
+  }
+}

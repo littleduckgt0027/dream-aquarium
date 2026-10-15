@@ -7,6 +7,7 @@ const r = spawnSync(
   process.execPath,
   [
     "--test",
+    "tests/admin-balance.test.js",
     "tests/game.test.js",
     "tests/inventory.test.js",
     "tests/api.test.js",

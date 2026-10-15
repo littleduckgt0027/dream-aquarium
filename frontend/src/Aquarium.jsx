@@ -1,3 +1,4 @@
+import { t, useI18n } from "./i18n/index.js";
 import React, { useEffect, useRef } from "react";
 import { COLORS } from "../../shared/rules.js";
 export function drawFish(c, f, x, y, size = 55, dir = 1, time = 0) {
@@ -149,7 +150,7 @@ export function FishIcon({ fish }) {
       width="160"
       height="90"
       className="fish-icon"
-      aria-label={`${fish.name} procedural fish`}
+      aria-label={t("ui.value0_procedural_fish", { p0: fish.name })}
     />
   );
 }
@@ -159,11 +160,28 @@ export default function Aquarium({
   decor,
   onSelect,
   quality = "high",
+  background = false,
 }) {
+  useI18n();
   const ref = useRef(),
     world = useRef([]),
-    latest = useRef({ fish, onSelect, theme, decor, quality });
-  latest.current = { fish, onSelect, theme, decor, quality };
+    invalidate = useRef(null),
+    latest = useRef({
+      fish,
+      onSelect,
+      theme,
+      decor,
+      quality,
+      background,
+    });
+  latest.current = {
+    fish,
+    onSelect,
+    theme,
+    decor,
+    quality,
+    background,
+  };
   useEffect(() => {
     const canvas = ref.current,
       c = canvas.getContext("2d");
@@ -171,21 +189,68 @@ export default function Aquarium({
       w = 1000,
       h = 600,
       last = 0,
+      painted = 0,
+      visible = false,
       t = 0;
+    const motion = matchMedia("(prefers-reduced-motion: reduce)");
+    const pause = () => {
+      cancelAnimationFrame(frame);
+      frame = null;
+    };
+    const schedule = () => {
+      if (!frame && visible && !document.hidden)
+        frame = requestAnimationFrame(render);
+    };
+    const redraw = () => {
+      painted = 0;
+      last = 0;
+      pause();
+      schedule();
+    };
+    invalidate.current = redraw;
     const resize = () => {
       const r = canvas.getBoundingClientRect();
-      w = r.width;
+      visible = r.width > 0 && r.height > 0;
+      if (!visible) {
+        pause();
+        return;
+      }
+      const nextWidth = r.width;
+      if (w > 0)
+        for (const f of world.current)
+          f.x = Math.max(50, Math.min(nextWidth - 50, (f.x * nextWidth) / w));
+      w = nextWidth;
       h = r.height;
-      const ratio = Math.min(devicePixelRatio, 2);
+      const ratio = Math.min(
+        devicePixelRatio,
+        latest.current.background || latest.current.quality === "low"
+          ? 1.25
+          : 2,
+      );
       canvas.width = w * ratio;
       canvas.height = h * ratio;
       c.setTransform(ratio, 0, 0, ratio, 0, 0);
+      redraw();
     };
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
     resize();
     function render(ms) {
-      const dt = Math.min((ms - last) / 1000, 0.04);
+      frame = null;
+      if (!visible || document.hidden) return;
+      const reduced = motion.matches;
+      canvas.dataset.motion = reduced ? "reduced" : "animated";
+      const interval = latest.current.background
+        ? 1000 / 24
+        : latest.current.quality === "low"
+          ? 1000 / 30
+          : 0;
+      if (!reduced && ms - painted < interval) {
+        schedule();
+        return;
+      }
+      painted = ms;
+      const dt = reduced || !last ? 0 : Math.min((ms - last) / 1000, 0.08);
       last = ms;
       t += dt;
       const { fish, theme, decor, quality } = latest.current;
@@ -289,7 +354,11 @@ export default function Aquarium({
           t,
         );
       }
-      const n = quality === "low" ? 12 : 42;
+      const n = reduced
+        ? 0
+        : quality === "low" || latest.current.background
+          ? 12
+          : 42;
       for (let i = 0; i < n; i++) {
         const x = (i * 131.7 + Math.sin(t * 0.5 + i) * 10) % w,
           y = h - ((t * (8 + (i % 5)) + i * 37) % h);
@@ -299,9 +368,15 @@ export default function Aquarium({
         c.arc(x, y, 1 + (i % 4), 0, 7);
         c.stroke();
       }
-      frame = requestAnimationFrame(render);
+      if (!reduced) schedule();
     }
-    frame = requestAnimationFrame(render);
+    schedule();
+    const visibility = () => {
+      if (document.hidden) pause();
+      else redraw();
+    };
+    document.addEventListener("visibilitychange", visibility);
+    motion.addEventListener("change", redraw);
     const click = (e) => {
       const r = canvas.getBoundingClientRect();
       const x = e.clientX - r.left,
@@ -313,16 +388,22 @@ export default function Aquarium({
     };
     canvas.addEventListener("click", click);
     return () => {
-      cancelAnimationFrame(frame);
+      pause();
+      invalidate.current = null;
+      document.removeEventListener("visibilitychange", visibility);
+      motion.removeEventListener("change", redraw);
       ro.disconnect();
       canvas.removeEventListener("click", click);
     };
   }, []);
+  useEffect(() => {
+    invalidate.current?.();
+  }, [fish, theme, decor, quality, background]);
   return (
     <canvas
       ref={ref}
       className="aquarium-canvas"
-      aria-label="Living aquarium with swimming procedural fish"
+      aria-label={t("ui.living_aquarium_with_swimming_procedural_fish")}
     />
   );
 }
