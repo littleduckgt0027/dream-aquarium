@@ -11,6 +11,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,6 +27,26 @@ jobs:
         run: npm run test:e2e
       - if: runner.os == 'Linux'
         run: npm run test:pages
+      - name: Exercise root Windows batch entry points
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:DREAM_NO_BROWSER = '1'
+          $env:DREAM_PORT = '3357'
+          try {
+            cmd /d /c START-GAME.bat
+            if ($LASTEXITCODE -ne 0) { throw 'START-GAME.bat failed' }
+            $health = Invoke-RestMethod http://127.0.0.1:3357/api/health
+            if ($health.application -ne 'dream-aquarium') { throw 'Wrong server' }
+            $first = Get-Content data/launcher.json | ConvertFrom-Json
+            cmd /d /c START-GAME.bat
+            if ($LASTEXITCODE -ne 0) { throw 'Repeated START failed' }
+            $second = Get-Content data/launcher.json | ConvertFrom-Json
+            if ($first.pid -ne $second.pid) { throw 'Duplicate game server' }
+          } finally {
+            cmd /d /c STOP-GAME.bat
+            if ($LASTEXITCODE -ne 0) { throw 'STOP-GAME.bat failed' }
+          }
       - if: runner.os == 'Windows'
         run: node scripts/package-windows.js
       - if: runner.os == 'Windows'
