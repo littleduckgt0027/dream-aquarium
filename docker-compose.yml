@@ -1,0 +1,16 @@
+services:
+  game:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_PATH: /app/data/aquarium.sqlite
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+    volumes:
+      - aquarium-data:/app/data
+    restart: unless-stopped
+volumes:
+  aquarium-data:

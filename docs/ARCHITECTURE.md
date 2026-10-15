@@ -1,0 +1,11 @@
+# Implementation notes
+
+React/Canvas and modern JavaScript ES modules are used instead of adding a TypeScript compilation step. Canvas gives deterministic procedural artwork with no downloaded graphics or WebGL requirement. The single Node process and synchronous SQLite transactions serialize cross-player economy writes, including auctions and idempotency. PostgreSQL is intentionally replaced by a durable local SQLite database for a self-contained runnable installation. These choices are appropriate for a small single-server game and not a claim of horizontal scalability.
+
+No WebSocket is necessary: visible tabs heartbeat/poll every 15 seconds, writes return authoritative state immediately, and the auction scheduler settles at least every 15 seconds while running. The market endpoint has independent search/filter/sort and server pagination; collection cards are paginated locally. Large gacha batches insert into one player transaction and are limited by authoritative storage capacity.
+
+Persistent ownership is in server data. LocalStorage keeps only the last authenticated visual cache and quality preference. Secure cookies hold a random session token; the database stores its hash. No browser-supplied wallet, DNA, age, reward progress, auction deadline, owner or maintenance flag is accepted. Sessions, user authentication and rate limiting precede game mutation. Origin checks complement SameSite cookies for browser CSRF. Every successful action is audited without credentials.
+
+Important operational limits: per-IP rate limits are in-memory and reset on restart; TLS must be handled by the host/reverse proxy; no email provider, CAPTCHA or managed backup provider is integrated. Recovery is via a user-held random code. The game is usable without external credentials. Public abuse resistance and long-duration load behavior require a launch review beyond functional tests.
+
+Client animations do not affect simulation. Server timestamps derive age and growth. A modest food item boosts growth progress without falsifying age. Same DNA produces the same outline/fin/tail/gradient/pattern/eyes. Motion is time-dependent and depth sorting follows y position; turning eases through a narrow silhouette instead of instant mirroring. All generated graphics are original project code.
