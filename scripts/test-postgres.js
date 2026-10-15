@@ -10,6 +10,8 @@ const r = spawnSync(
     "tests/admin-balance.test.js",
     "tests/game.test.js",
     "tests/inventory.test.js",
+    "tests/collectibles.test.js",
+    "tests/fish-expansion.test.js",
     "tests/api.test.js",
     "tests/cors.test.js",
     "tests/postgres.test.js",

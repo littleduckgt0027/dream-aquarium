@@ -50,6 +50,7 @@ test(
       for (const f of [
         "scripts",
         "backend",
+        "database",
         "frontend",
         "shared",
         "package.json",

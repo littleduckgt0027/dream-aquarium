@@ -1,3 +1,8 @@
+import {
+  decoration as drawDecoration,
+  background as drawBackground,
+  accessories as drawAccessories,
+} from "./collectible-art.js";
 import { t, useI18n } from "./i18n/index.js";
 import React, { useEffect, useRef } from "react";
 import { COLORS } from "../../shared/rules.js";
@@ -135,6 +140,10 @@ export function drawFish(c, f, x, y, size = 55, dir = 1, time = 0) {
   c.beginPath();
   c.arc(length * 0.46, -h * 0.22, 1.1, 0, 7);
   c.fill();
+  c.save();
+  c.scale(size / 55, size / 55);
+  drawAccessories(c, f.accessories, time);
+  c.restore();
   c.restore();
 }
 export function FishIcon({ fish }) {
@@ -161,6 +170,7 @@ export default function Aquarium({
   onSelect,
   quality = "high",
   background = false,
+  cosmetics = null,
 }) {
   useI18n();
   const ref = useRef(),
@@ -173,6 +183,7 @@ export default function Aquarium({
       decor,
       quality,
       background,
+      cosmetics,
     });
   latest.current = {
     fish,
@@ -181,6 +192,7 @@ export default function Aquarium({
     decor,
     quality,
     background,
+    cosmetics,
   };
   useEffect(() => {
     const canvas = ref.current,
@@ -267,6 +279,15 @@ export default function Aquarium({
       water.addColorStop(1, "#03242f");
       c.fillStyle = water;
       c.fillRect(0, 0, w, h);
+      if (latest.current.cosmetics?.background)
+        drawBackground(
+          c,
+          latest.current.cosmetics.background,
+          w,
+          h,
+          t,
+          reduced,
+        );
       for (let i = 0; i < 6; i++) {
         c.fillStyle = `rgba(155,255,228,${0.028 + Math.sin(t * 0.3 + i) * 0.01})`;
         c.beginPath();
@@ -318,6 +339,10 @@ export default function Aquarium({
           c.fillRect(w * 0.65 + i * 35, h - 140, 19, 112);
         c.fillRect(w * 0.65 - 10, h - 152, 110, 18);
       }
+      for (const item of [...(latest.current.cosmetics?.placements || [])].sort(
+        (a, b) => a.y - b.y,
+      ))
+        drawDecoration(c, item, w, h, t, reduced);
       world.current = fish.map((f, i) => {
         let old = world.current.find((x) => x.id === f.id);
         if (!old)
@@ -346,7 +371,12 @@ export default function Aquarium({
         const scale = 0.45 + 0.55 * (a.f.growth || 0);
         drawFish(
           c,
-          a.f,
+          {
+            ...a.f,
+            accessories: (latest.current.cosmetics?.accessories || []).filter(
+              (i) => i.fish_id === a.f.id,
+            ),
+          },
           a.x,
           a.y,
           (36 + a.f.dna.maxSize * 17) * scale,
@@ -398,7 +428,7 @@ export default function Aquarium({
   }, []);
   useEffect(() => {
     invalidate.current?.();
-  }, [fish, theme, decor, quality, background]);
+  }, [fish, theme, decor, quality, background, cosmetics]);
   return (
     <canvas
       ref={ref}

@@ -84,6 +84,12 @@ export const duration = (seconds) =>
 // Existing database records remain untouched; only known system messages are
 // translated. Player names, usernames, IDs and DNA values never pass through this.
 export function systemMessage(text) {
+  if (
+    typeof text === "string" &&
+    text.startsWith("exp.") &&
+    Object.hasOwn(messages.en, text)
+  )
+    return t(text);
   if (Object.hasOwn(sourceKeys, text)) return t(sourceKeys[text]);
   for (const [pattern, key] of [
     [/^Gacha x(\d+)$/, "ui.gacha_xvalue0"],

@@ -5,7 +5,11 @@ import { openSQLite } from "./sqlite.js";
 
 const context = new AsyncLocalStorage();
 const queues = new WeakMap();
-const migrations = ["001_initial.sql"];
+const migrations = [
+  "001_initial.sql",
+  "002_collectibles.sql",
+  "003_fish_inventory.sql",
+];
 
 export function poolConfig(connectionString) {
   let url;

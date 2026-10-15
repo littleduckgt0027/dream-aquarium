@@ -52,3 +52,15 @@ test("fullscreen rejection/unsupported API preserves fallback and native exit pr
   off();
   toggleBackground();
 });
+
+test("native entry Promise handles external exit before queued fullscreenchange", async () => {
+  const element = { requestFullscreen: () => Promise.resolve() };
+  const before = globalThis.document;
+  globalThis.document = { fullscreenElement: null, activeElement: null };
+  const off = registerDisplay(element);
+  enterAquarium();
+  await Promise.resolve();
+  assert.equal(displaySnapshot().immersive, false);
+  off();
+  globalThis.document = before;
+});

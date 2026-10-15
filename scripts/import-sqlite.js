@@ -23,6 +23,55 @@ const tables = {
   lineage: ["id", "fish"],
   audit: ["id", "time", "user_id", "action", "detail"],
   meta: ["key", "value"],
+  collectible_instances: [
+    "id",
+    "user_id",
+    "definition_id",
+    "category",
+    "rarity",
+    "locked",
+    "version",
+    "fish_id",
+    "slot",
+    "equipped",
+    "x",
+    "y",
+    "rotation",
+    "scale",
+    "created",
+  ],
+  collectible_tickets: ["user_id", "category", "rarity", "locked", "quantity"],
+  player_fish: [
+    "id",
+    "user_id",
+    "rarity",
+    "name",
+    "generation",
+    "location",
+    "limited",
+    "locked",
+    "born",
+    "mature_at",
+    "ordinal",
+    "breeding",
+    "data",
+  ],
+  inventory_previews: [
+    "id",
+    "user_id",
+    "operation",
+    "category",
+    "created",
+    "consumed",
+    "summary",
+  ],
+  inventory_consumptions: ["preview_id", "instance_id", "user_id", "category"],
+  inventory_preview_rows: [
+    "preview_id",
+    "instance_id",
+    "version",
+    "fingerprint",
+  ],
 };
 
 // Explicit operator command only. The source is opened read-only and a consistent
@@ -40,7 +89,15 @@ export async function importSQLite(source, db) {
     const rows = Object.fromEntries(
       Object.keys(tables).map((name) => [
         name,
-        sqlite.prepare(`SELECT ${tables[name].join(",")} FROM ${name}`).all(),
+        sqlite
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+          )
+          .get(name)
+          ? sqlite
+              .prepare(`SELECT ${tables[name].join(",")} FROM ${name}`)
+              .all()
+          : [],
       ]),
     );
     return await transaction(db, async () => {

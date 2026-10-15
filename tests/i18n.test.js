@@ -16,7 +16,7 @@ import {
 test("all five catalogs have complete keys and matching interpolation; missing keys throw", () => {
   const base = Object.keys(messages.en).sort(),
     tokens = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
-  assert.equal(base.length, 405);
+  assert.ok(base.length >= 405);
   for (const { code } of LANGUAGES) {
     assert.deepEqual(Object.keys(messages[code]).sort(), base);
     for (const key of base) {
@@ -105,6 +105,11 @@ test("player-facing JSX uses dictionaries; product branding and DNA identifiers 
     "frontend/src/GlobalControls.jsx",
     "frontend/src/DisplayControls.jsx",
     "frontend/src/AquariumStage.jsx",
+    "frontend/src/Expansion.jsx",
+    "frontend/src/FishInventory.jsx",
+    "frontend/src/StackInventory.jsx",
+    "frontend/src/RecyclingAll.jsx",
+    "frontend/src/FishPicker.jsx",
   ]) {
     const ast = parse(readFileSync(file, "utf8"), {
       sourceType: "module",

@@ -75,7 +75,7 @@ pgTest(
     await Promise.all([migrate(db), migrate(db), migrate(db)]);
     assert.equal(
       (await db.prepare("SELECT count(*) n FROM schema_migrations").get()).n,
-      1,
+      3,
     );
     await seed(db);
     await run(db, "a", "gacha", { count: 1 });
@@ -347,6 +347,38 @@ pgTest(
       await fetch(url + "action", { method: "POST", headers, body })
     ).json();
     assert.equal(first.pearls, 2900);
+    async function itemAction(type, payload, key) {
+      const r = await fetch(url + "action", {
+        method: "POST",
+        headers: { ...headers, "Idempotency-Key": key },
+        body: JSON.stringify({ type, payload }),
+      });
+      assert.equal(r.status, 200);
+      return r.json();
+    }
+    const items = await itemAction(
+      "itemGacha",
+      { category: "decoration", count: 10 },
+      "restart-item-roll",
+    );
+    const placed = items.lastItemRoll[0];
+    await itemAction(
+      "itemPlace",
+      { id: placed.id, x: 0.4, y: 0.8, rotation: 15, scale: 1.2 },
+      "restart-placement",
+    );
+    const snapshot = await itemAction(
+      "itemPreview",
+      { category: "decoration", operation: "delete" },
+      "restart-item-preview",
+    );
+    assert.equal(snapshot.itemPreview.total, 9);
+    await db
+      .prepare(
+        "INSERT INTO collectible_tickets(user_id,category,rarity,quantity) VALUES(?,?,?,?)",
+      )
+      .run(first.id, "background", 4, 7);
+
     await stop();
     url = await start();
     const replay = await fetch(url + "action", {
@@ -356,7 +388,20 @@ pgTest(
     });
     assert.equal(replay.status, 200);
     const after = await replay.json();
-    assert.equal(after.pearls, 2900);
+    assert.equal(after.pearls, 2000);
+    assert.equal(after.cosmetics.placements[0].id, placed.id);
+    assert.equal(after.cosmetics.placements[0].rotation, 15);
+    assert.equal(after.itemPreview.id, snapshot.itemPreview.id);
+    await itemAction(
+      "itemCommit",
+      { previewId: snapshot.itemPreview.id, confirm: true },
+      "restart-item-commit",
+    );
+    const inventory = await (
+      await fetch(url + "items?category=decoration", { headers })
+    ).json();
+    assert.equal(inventory.total, 1);
+    assert.equal(inventory.tickets[0].quantity, 7);
     assert.deepEqual(
       after.fish.map((f) => f.id),
       first.fish.map((f) => f.id),
@@ -381,7 +426,7 @@ pgTest(
     await transaction(db, () => setMaintenance(db, false));
     assert.equal(
       (await (await fetch(url + "state", { headers })).json()).pearls,
-      2900,
+      2000,
     );
     await stop();
   },

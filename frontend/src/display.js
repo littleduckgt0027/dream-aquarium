@@ -17,7 +17,8 @@ try {
 } catch {}
 let state = readDisplay(storage),
   target = null,
-  returnFocus = null;
+  returnFocus = null,
+  nativeActive = false;
 const listeners = new Set();
 export const displaySnapshot = () => state;
 export const subscribeDisplay = (fn) => {
@@ -41,7 +42,10 @@ export function useDisplay() {
 export function registerDisplay(element) {
   target = element;
   return () => {
-    if (target === element) target = null;
+    if (target === element) {
+      target = null;
+      nativeActive = false;
+    }
   };
 }
 export function toggleBackground() {
@@ -55,19 +59,43 @@ export function enterAquarium() {
   update({ immersive: true });
   // Called synchronously from the user's gesture. Rejection keeps the in-page fallback.
   try {
+    const requestedTarget = target;
     const request = target.requestFullscreen?.();
-    request?.catch(() => {});
+    request?.then(
+      () => {
+        if (target !== requestedTarget) return;
+        nativeActive = true;
+        // Entry/exit events may be queued together; the Promise also records entry.
+        if (globalThis.document?.fullscreenElement !== target)
+          nativeFullscreenEnded();
+      },
+      () => {},
+    );
   } catch {}
 }
+function restoreFocus() {
+  const element = returnFocus;
+  setTimeout(() => {
+    if (!state.immersive) element?.focus?.();
+  }, 0);
+}
 export async function exitAquarium() {
-  update({ immersive: false });
   try {
     if (globalThis.document?.fullscreenElement === target)
       await document.exitFullscreen();
-  } catch {}
-  setTimeout(() => returnFocus?.focus?.(), 0);
+  } catch {
+    return;
+  }
+  nativeActive = false;
+  update({ immersive: false });
+  restoreFocus();
+}
+export function nativeFullscreenChanged() {
+  if (globalThis.document?.fullscreenElement === target) nativeActive = true;
+  else if (nativeActive) nativeFullscreenEnded();
 }
 export function nativeFullscreenEnded() {
+  nativeActive = false;
   update({ immersive: false });
-  setTimeout(() => returnFocus?.focus?.(), 0);
+  restoreFocus();
 }

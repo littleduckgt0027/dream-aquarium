@@ -81,3 +81,7 @@ See [online setup and access blockers](docs/ONLINE_SETUP.md). Pages subpath and 
 ### Immersive aquarium display
 
 Use Fullscreen Aquarium or Aquarium Background in the Aquarium header, or the layers control in the top bar. Both reuse your living aquarium and remember your preference. [Display controls, accessibility and rendering](docs/IMMERSIVE_AQUARIUM.md).
+
+### Item gacha, storage and recycling
+
+The expansion adds 42 collectible decoration/background/accessory designs, server-owned placement and equipment, paginated fish storage with paid upgrades up to 50,000, cross-page selection, multi-tier recycling and bulk tickets/supplies. Fish rarity odds and default starting balances are unchanged. See [rules, UI, database migration and deployment notes](docs/ITEM_EXPANSION.md) and [actual validation](docs/EXPANSION_VALIDATION.md).

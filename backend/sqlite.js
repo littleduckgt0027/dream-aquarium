@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname } from "node:path";
 export function openSQLite(
   path = process.env.DB_PATH || "data/aquarium.sqlite",
@@ -18,5 +19,34 @@ export function openSQLite(
  CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL);
  INSERT OR IGNORE INTO meta VALUES('maintenance','0');
  PRAGMA user_version=1;`);
+  if (
+    !db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='collectible_instances'",
+      )
+      .get()
+  )
+    db.exec(
+      readFileSync(
+        new URL("../database/migrations/002_collectibles.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+  if (
+    !db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='player_fish'",
+      )
+      .get()
+  )
+    db.exec(
+      readFileSync(
+        new URL(
+          "../database/migrations/003_fish_inventory.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+    );
   return db;
 }

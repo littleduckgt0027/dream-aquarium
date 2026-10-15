@@ -1,3 +1,9 @@
+import { definition } from "../../shared/collectibles.js";
+import FishPicker from "./FishPicker.jsx";
+import StackInventory from "./StackInventory.jsx";
+import RecyclingAll from "./RecyclingAll.jsx";
+import FishInventory from "./FishInventory.jsx";
+import Expansion from "./Expansion.jsx";
 import AquariumStage from "./AquariumStage.jsx";
 import DisplayControls from "./DisplayControls.jsx";
 import { useDisplay } from "./display.js";
@@ -90,6 +96,11 @@ const nav = [
   ["limited", "☾", "ui.monthly_collection"],
   ["inbox", "✉", "ui.inboxes"],
   ["inventory", "◈", "ui.inventory"],
+  ["itemGacha", "✧", "exp.item_gacha"],
+  ["items", "◈", "exp.items"],
+  ["stacks", "▤", "exp.stacks"],
+  ["recycling", "♻", "exp.recycling"],
+  ["studio", "❖", "exp.studio"],
   ["customize", "❋", "ui.customize"],
   ["profile", "◎", "ui.profile"],
   ["settings", "⚙", "ui.settings"],
@@ -115,15 +126,15 @@ function App() {
     [tier, setTier] = useState("all"),
     [sort, setSort] = useState("rarity"),
     [chosen, setChosen] = useState([]),
+    [placementId, setPlacementId] = useState(null),
+    [parentFish, setParentFish] = useState([null, null]),
     [parents, setParents] = useState(["", ""]),
     [rolls, setRolls] = useState(null),
     [marketType, setMarketType] = useState("all"),
     [historyMonth, setHistoryMonth] = useState(""),
-    [fishPage, setFishPage] = useState(1),
     [marketPage, setMarketPage] = useState(1),
     [marketData, setMarketData] = useState(null);
   useEffect(() => {
-    setFishPage(1);
     setMarketPage(1);
   }, [query, tier, sort, marketType]);
   useEffect(() => {
@@ -343,7 +354,8 @@ function App() {
               aria-label={t("ui.select_value0", {
                 p0: f.name,
               })}
-              checked={chosen.includes(f.id)}
+              disabled={f.restricted || f.bulkSelected}
+              checked={f.bulkSelected || chosen.includes(f.id)}
               onChange={(e) =>
                 setChosen(
                   e.target.checked
@@ -500,23 +512,7 @@ function App() {
         )}
       </main>
     );
-  const fishes = state.fish
-    .filter(
-      (f) =>
-        (tier === "all" || f.rarity === Number(tier)) &&
-        `${f.name} ${f.id} ${RARITIES[f.rarity]}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-    )
-    .sort((a, b) =>
-      sort === "rarity"
-        ? b.rarity - a.rarity
-        : sort === "age"
-          ? a.born - b.born
-          : a.name.localeCompare(b.name, getLocale()),
-    );
-  const tank = state.fish.filter((f) => f.location === "tank"),
-    adults = state.fish.filter((f) => f.growth >= 1);
+  const tank = state.fish.filter((f) => f.location === "tank");
   const unclaimed =
     state.rewards.filter((r) => !r.claimed).length +
     state.deliveries.filter((r) => !r.claimed).length;
@@ -599,7 +595,7 @@ function App() {
             </div>
           )}
           <div
-            className={`aquarium-page ${screen !== "aquarium" ? "inactive" : ""} ${screen === "customize" ? "preview" : ""}`}
+            className={`aquarium-page ${screen !== "aquarium" ? "inactive" : ""} ${["customize", "studio"].includes(screen) ? "preview" : ""}`}
           >
             {screen === "aquarium" && (
               <div className="page-title">
@@ -633,15 +629,25 @@ function App() {
                 decor={state.decorations[0]}
                 onSelect={setSelected}
                 quality={quality}
+                cosmetics={state.cosmetics}
+                editing={screen === "studio" && !locked}
+                onPlace={(p) => act("itemPlace", p)}
+                onChoosePlacement={setPlacementId}
               />
               <div className="tank-top">
                 <span className="glass-pill">
                   ◉ &nbsp;{" "}
-                  {state.theme === "midnight"
-                    ? t("ui.midnight_reef")
-                    : state.theme === "coral"
-                      ? t("ui.coral_cove")
-                      : t("ui.emerald_lagoon")}
+                  {state.cosmetics?.background
+                    ? t(
+                        "exp." +
+                          definition(state.cosmetics.background.definition_id)
+                            .motif,
+                      )
+                    : state.theme === "midnight"
+                      ? t("ui.midnight_reef")
+                      : state.theme === "coral"
+                        ? t("ui.coral_cove")
+                        : t("ui.emerald_lagoon")}
                 </span>
                 <span className="glass-pill">
                   {tank.length} / {state.tank} {t("ui.fish")}
@@ -664,7 +670,8 @@ function App() {
                     <section>
                       <small>{t("ui.your_collection")}</small>
                       <b>
-                        {fmt(state.fish.length)} <i>{t("ui.unique_fish")}</i>
+                        {fmt(state.fishCounts?.total ?? state.fish.length)}{" "}
+                        <i>{t("ui.unique_fish")}</i>
                       </b>
                     </section>
                   </div>
@@ -749,105 +756,75 @@ function App() {
               </>
             )}
           </div>
-          {screen === "collection" && (
-            <>
-              <Title
-                label={t("ui.your_living_library")}
-                title={t("ui.every_fish_a_discovery")}
-                text={t(
-                  "ui.value0_fish_value1_value2_storage_value3_value4_aquarium",
-                  {
-                    p0: state.fish.length,
-                    p1: state.fish.filter((f) => f.location === "storage")
-                      .length,
-                    p2: state.storage,
-                    p3: tank.length,
-                    p4: state.tank,
-                  },
-                )}
-              />
-              <div className="toolbar">
-                <input
-                  aria-label={t("ui.search_fish")}
-                  placeholder={t("ui.search_fish_or_dna_id")}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+          {screen === "stacks" && (
+            <StackInventory state={state} api={api} act={act} locked={locked} />
+          )}
+          {screen === "recycling" && <RecyclingAll act={act} locked={locked} />}
+          {["itemGacha", "items", "recycling", "studio"].includes(screen) && (
+            <Expansion
+              screen={screen}
+              fishInventory={
+                <FishInventory
+                  state={state}
+                  api={api}
+                  act={act}
+                  locked={locked}
+                  renderFish={fishCard}
+                  chosen={chosen}
+                  setChosen={setChosen}
+                  query={query}
+                  setQuery={setQuery}
+                  tier={tier}
+                  setTier={setTier}
+                  sort={sort}
+                  setSort={setSort}
                 />
-                <select
-                  aria-label={t("ui.filter_rarity")}
-                  value={tier}
-                  onChange={(e) => setTier(e.target.value)}
-                >
-                  <option value="all">{t("ui.all_rarities")}</option>
-                  {RARITIES.map((r, i) => (
-                    <option value={i} key={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label={t("ui.sort_fish")}
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                >
-                  <option value="rarity">{t("ui.rarity")}</option>
-                  <option value="age">{t("ui.age")}</option>
-                  <option value="name">{t("ui.name")}</option>
-                </select>
-                {button(
-                  t("ui.expand_storage_value0", {
-                    p0: fmt(state.storage * 2),
-                  }),
-                  () =>
-                    act("upgrade", {
-                      kind: "storage",
-                    }),
+              }
+              state={state}
+              act={act}
+              api={api}
+              locked={locked}
+              onSelectPlacement={(item) => {
+                setPlacementId(item.id);
+                setScreen("studio");
+              }}
+            />
+          )}
+          {screen === "studio" &&
+            placementId &&
+            state.cosmetics?.placements.find((i) => i.id === placementId) && (
+              <PlacementEditor
+                key={
+                  placementId +
+                  JSON.stringify(
+                    state.cosmetics.placements.find(
+                      (i) => i.id === placementId,
+                    ),
+                  )
+                }
+                item={state.cosmetics.placements.find(
+                  (i) => i.id === placementId,
                 )}
-                {button(
-                  t("ui.recycle_value0_10", {
-                    p0: chosen.length,
-                  }),
-                  async () => {
-                    const s = await act("recycle", {
-                      ids: chosen,
-                    });
-                    if (s) setChosen([]);
-                  },
-                )}
-              </div>
-              <p className="muted">
-                {t(
-                  "ui.select_10_non_limited_fish_of_the_same_rarity_to_receive_one_non_tradable_recycling_ticket",
-                )}
-              </p>
-              <div className="fish-grid">
-                {fishes
-                  .slice((fishPage - 1) * 60, fishPage * 60)
-                  .map((f) => fishCard(f))}
-              </div>
-              {fishes.length > 60 && (
-                <div className="pagination">
-                  <button
-                    disabled={fishPage <= 1}
-                    onClick={() => setFishPage((p) => p - 1)}
-                  >
-                    {t("ui.previous")}
-                  </button>
-                  <span>
-                    {t("ui.page")} {fishPage} / {Math.ceil(fishes.length / 60)}
-                  </span>
-                  <button
-                    disabled={fishPage >= Math.ceil(fishes.length / 60)}
-                    onClick={() => setFishPage((p) => p + 1)}
-                  >
-                    {t("ui.next")}
-                  </button>
-                </div>
-              )}
-              {!fishes.length && (
-                <Empty text={t("ui.no_fish_match_your_search")} />
-              )}
-            </>
+                locked={locked}
+                save={(p) => act("itemPlace", p)}
+              />
+            )}
+          {screen === "collection" && (
+            <FishInventory
+              state={state}
+              api={api}
+              act={act}
+              locked={locked}
+              renderFish={fishCard}
+              chosen={chosen}
+              setChosen={setChosen}
+              query={query}
+              setQuery={setQuery}
+              tier={tier}
+              setTier={setTier}
+              sort={sort}
+              setSort={setSort}
+            />
           )}
           {screen === "breed" && (
             <>
@@ -862,38 +839,22 @@ function App() {
                 <div className="parent-pair">
                   {[0, 1].map((i) => (
                     <div key={i}>
-                      <label>
-                        {t("ui.parent")} {i + 1}
-                        <select
-                          aria-label={t("ui.parent_value0", {
-                            p0: i + 1,
-                          })}
-                          value={parents[i]}
-                          onChange={(e) =>
-                            setParents(
-                              parents.map((p, j) =>
-                                j === i ? e.target.value : p,
-                              ),
-                            )
-                          }
-                        >
-                          <option value="">
-                            {t("ui.choose_a_mature_fish")}
-                          </option>
-                          {adults.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name} · {RARITIES[f.rarity]} ·{" "}
-                              {f.id.slice(0, 4)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {parents[i] &&
-                        state.fish.find((f) => f.id === parents[i]) &&
-                        fishCard(
-                          state.fish.find((f) => f.id === parents[i]),
-                          false,
-                        )}
+                      <FishPicker
+                        api={api}
+                        state={state}
+                        label={t("ui.parent_value0", { p0: i + 1 })}
+                        value={parents[i]}
+                        mature={true}
+                        onChoose={(f) => {
+                          setParents(
+                            parents.map((p, j) => (j === i ? f?.id || "" : p)),
+                          );
+                          setParentFish(
+                            parentFish.map((p, j) => (j === i ? f : p)),
+                          );
+                        }}
+                      />
+                      {parentFish[i] && fishCard(parentFish[i], false)}
                     </div>
                   ))}
                 </div>
@@ -992,9 +953,10 @@ function App() {
                           count: Number(n),
                         });
                         if (s)
-                          setRolls(
-                            s.fish.filter((f) => s.lastRoll.includes(f.id)),
-                          );
+                          setRolls({
+                            fish: s.lastRollPreview,
+                            total: s.lastRollCount,
+                          });
                       },
                       {
                         key: n,
@@ -1026,14 +988,14 @@ function App() {
               {rolls && (
                 <>
                   <h2>
-                    {t("ui.your_discoveries")} {rolls.length}
+                    {t("ui.your_discoveries")} {rolls.total}
                   </h2>
                   <div className="fish-grid">
-                    {rolls.slice(0, 100).map((f) => fishCard(f, false))}
+                    {rolls.fish.slice(0, 100).map((f) => fishCard(f, false))}
                   </div>
-                  {rolls.length > 100 && (
+                  {rolls.total > 100 && (
                     <p>
-                      {t("ui.showing_first_100_results_all")} {rolls.length}{" "}
+                      {t("ui.showing_first_100_results_all")} {rolls.total}{" "}
                       {t("ui.are_in_fish_storage")}
                     </p>
                   )}
@@ -1226,17 +1188,12 @@ function App() {
                     });
                   }}
                 >
-                  <label>
-                    {t("ui.fish_3f3f8b")}
-                    <select name="id" required>
-                      <option value="">{t("ui.choose_your_fish")}</option>
-                      {state.fish.map((f) => (
-                        <option value={f.id} key={f.id}>
-                          {f.name} · {RARITIES[f.rarity]} · {f.id.slice(0, 4)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <FishPicker
+                    api={api}
+                    state={state}
+                    label={t("ui.fish_3f3f8b")}
+                    name="id"
+                  />
                   <label>
                     {t("ui.type")}
                     <select name="type">
@@ -1656,31 +1613,15 @@ function App() {
                         {t("ui.food")}
                         {i.count} / 999
                       </span>
-                      <label>
-                        {t("ui.growing_fish")}
-                        <select
-                          name="fishId"
-                          aria-label={t("ui.growing_fish")}
-                          required
-                        >
-                          <option value="">
-                            {t("ui.choose_a_young_fish")}
-                          </option>
-                          {state.fish
-                            .filter((f) => f.growth < 1)
-                            .map((f) => (
-                              <option key={f.id} value={f.id}>
-                                {f.name} · {Math.round(f.growth * 100)}
-                                {t("ui.grown")} {f.id.slice(0, 4)}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                      <button
-                        disabled={
-                          locked || !state.fish.some((f) => f.growth < 1)
-                        }
-                      >
+                      <FishPicker
+                        api={api}
+                        state={state}
+                        label={t("ui.growing_fish")}
+                        name="fishId"
+                        mature={false}
+                      />
+
+                      <button disabled={locked}>
                         {t("ui.feed_one_serving")}
                       </button>
                     </form>
@@ -1764,9 +1705,10 @@ function App() {
               <section className="panel">
                 <h2>{t("ui.your_story_in_numbers")}</h2>
                 <p>
-                  {state.fish.length} {t("ui.fish_62ee46")}{" "}
-                  {state.collection.length} {t("ui.limited_discoveries")}{" "}
-                  {hours(state.online.total)} {t("ui.online")}
+                  {state.fishCounts?.total ?? state.fish.length}{" "}
+                  {t("ui.fish_62ee46")} {state.collection.length}{" "}
+                  {t("ui.limited_discoveries")} {hours(state.online.total)}{" "}
+                  {t("ui.online")}
                 </p>
                 <p>
                   {t("ui.player_id")} {state.id}
@@ -1953,7 +1895,8 @@ function App() {
                 ? selected.parents.join(" × ")
                 : t("ui.wild_discovery")}
             </p>
-            {state.fish.some((f) => f.id === selected.id) && (
+            {(selected.owned ||
+              state.fish.some((f) => f.id === selected.id)) && (
               <div className="card-actions">
                 {button(
                   selected.location === "tank"
@@ -2049,3 +1992,48 @@ if (import.meta.env.PROD && "serviceWorker" in navigator)
       scope: import.meta.env.BASE_URL,
     })
     .catch(() => {});
+
+function PlacementEditor({ item, save, locked }) {
+  const [draft, setDraft] = useState({
+    id: item.id,
+    x: item.x,
+    y: item.y,
+    rotation: item.rotation,
+    scale: item.scale,
+  });
+  return (
+    <form
+      className="panel placement-editor"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save(draft);
+      }}
+    >
+      <h2>{t("exp.edit")}</h2>
+      <p>{t("exp.placement_hint")}</p>
+      {[
+        ["x", 0.03, 0.97, 0.01],
+        ["y", 0.1, 0.97, 0.01],
+        ["rotation", -180, 180, 1],
+        ["scale", 0.4, 2.5, 0.1],
+      ].map(([key, min, max, step]) => (
+        <label key={key}>
+          {key === "x" ? "↔" : key === "y" ? "↕" : t("exp." + key)}
+          <input
+            aria-label={key === "x" ? "↔" : key === "y" ? "↕" : t("exp." + key)}
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={draft[key]}
+            onChange={(e) =>
+              setDraft({ ...draft, [key]: Number(e.target.value) })
+            }
+          />
+          <output>{number(draft[key])}</output>
+        </label>
+      ))}
+      <button disabled={locked}>{t("exp.save")}</button>
+    </form>
+  );
+}

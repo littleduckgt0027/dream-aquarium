@@ -1,3 +1,7 @@
+import { stacks } from "./stacks.js";
+import { readPlayer } from "./fish-store.js";
+import { fishPage } from "./fish-store.js";
+import { inventory } from "./collectibles.js";
 if (process.argv.includes("--production")) process.env.NODE_ENV = "production";
 import express from "express";
 import {
@@ -337,6 +341,50 @@ export async function createApp({
       .get(req.params.id);
     if (!f) return res.status(404).json({ error: "Ancestor not found" });
     res.json(JSON.parse(f.fish));
+  });
+  app.get("/api/stacks", auth, async (req, res) => {
+    const p = { ...req.query };
+    if (p.tiers) p.tiers = String(p.tiers).split(",").map(Number);
+    const page = Number(p.page || 1);
+    if (!Number.isSafeInteger(page) || page < 1 || page > 2000) {
+      res.status(400).json({ error: "exp.invalid_request" });
+      return;
+    }
+    res.json(
+      await transaction(db, async () => {
+        await requireSession(req);
+        const s = await readPlayer(db, req.user, { ids: [] }),
+          rows = await stacks(db, req.user, s, p);
+        return {
+          rows: rows.slice((page - 1) * 48, page * 48),
+          total: rows.length,
+          page,
+          pageSize: 48,
+          eligibleTotal: rows
+            .filter((i) => !i.locked)
+            .reduce((n, i) => n + i.quantity, 0),
+        };
+      }),
+    );
+  });
+  app.get("/api/fish", auth, async (req, res) => {
+    const p = { ...req.query };
+    if (p.tiers) p.tiers = String(p.tiers).split(",").map(Number);
+    res.json(
+      await transaction(db, async () => {
+        await requireSession(req);
+        return fishPage(db, req.user, p);
+      }),
+    );
+  });
+  app.get("/api/items", auth, async (req, res) => {
+    const p = { ...req.query };
+    if (p.tiers) p.tiers = String(p.tiers).split(",").map(Number);
+    const result = await transaction(db, async () => {
+      await requireSession(req);
+      return inventory(db, req.user, p);
+    });
+    res.json(result);
   });
   app.get("/api/state", auth, async (req, res) => {
     const state = await transaction(db, async () => {
